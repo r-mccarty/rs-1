@@ -1,0 +1,34 @@
+# Secrets
+secrets.yaml
+.env
+.env.local
+
+# ESPHome build artifacts
+firmware/esphome/.esphome/
+firmware/esphome/**/.pioenvs/
+firmware/esphome/**/.piolibdeps/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+*.bin
+*.elf
+
+# CAD backup files
+*.bak
+*.tmp
