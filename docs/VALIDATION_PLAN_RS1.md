@@ -32,6 +32,13 @@ Validate RS-1 against product success metrics for setup, accuracy, OTA reliabili
 - Environments: living room, bedroom, kitchen, hallway.
 - Pass Criteria: < 5% false occupancy across environments.
 
+### 3.2.1 Tracking Accuracy (Ground Truth)
+
+- Test: Track-level accuracy against ground truth trajectories.
+- Method: Record synchronized LD2450 + depth sensor data, track targets in depth data, and compare to RS-1 tracks.
+- Environments: wall-mounted setup (initial), ceiling-mounted setup (future).
+- Pass Criteria: RS-1 track error within 5-10% of ground truth error baseline.
+
 ### 3.3 OTA Reliability
 
 - Test: OTA update success across network conditions.
@@ -84,6 +91,49 @@ Validate RS-1 against product success metrics for setup, accuracy, OTA reliabili
 - App analytics for flow drop-off.
 - Support tickets for update failures and accuracy complaints.
 
+## 6.1 Ground Truth Dataset Pipeline
+
+- Collect synchronized LD2450 frames and depth sensor frames.
+- Calibrate both sensors into a shared floor-plane coordinate system.
+- Generate ground truth tracks from depth data using a reference tracker.
+- Store datasets with placement metadata (wall-mounted vs ceiling-mounted).
+
+## 6.2 Optimization Loop (Tracking)
+
+- Parameters to tune: gating distance, hold time, smoothing constants, confidence decay, z-score thresholds.
+- Objective: minimize weighted tracking loss (position error + ID switches + misses).
+- Search strategy: initial grid/random search, then Bayesian optimization.
+- Output: tuned parameter sets for wall-mounted and ceiling-mounted placements.
+
+## 6.3 Calibration Procedure (Depth -> Radar Frame)
+
+- Establish a shared floor-plane coordinate system with known scale.
+- Place 3+ calibration targets at known positions in the room.
+- Capture depth sensor point cloud and radar detections simultaneously.
+- Fit a rigid transform (rotation + translation) from depth coordinates to radar coordinates.
+- Validate by checking residual error at calibration points (target < 10 cm).
+- Save transform per placement mode (wall vs ceiling) and reuse for dataset alignment.
+
+## 6.4 Tracking Loss Function
+
+Define a per-frame loss across all tracks:
+
+```
+L = w_p * mean_position_error
+  + w_m * missed_detection_rate
+  + w_s * id_switch_rate
+  + w_l * latency_penalty
+```
+
+Recommended defaults:
+
+- w_p = 0.5 (position error is primary)
+- w_m = 0.2 (missed detections)
+- w_s = 0.2 (ID switches)
+- w_l = 0.1 (latency)
+
+Compute final score as the average L across the dataset. Lower is better.
+
 ## 7. Exit Criteria for Beta Launch
 
 - All critical functional tests pass.
@@ -96,3 +146,4 @@ Validate RS-1 against product success metrics for setup, accuracy, OTA reliabili
 - Time threshold for labeling "false occupancy" in recorded datasets.
 - Required minimum room count for accuracy validation.
 - Beta cohort size and duration.
+- Depth sensor selection and ground truth tracker (Luxonis or equivalent).
