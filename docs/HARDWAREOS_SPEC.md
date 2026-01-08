@@ -47,6 +47,8 @@ HardwareOS consumes LD2450 detections at a fixed frame rate (assumed 10 Hz pendi
   - Persistent storage for zones, sensitivity, and calibration.
 - M07 OTA Manager
   - Cloud-triggered OTA, local update fallback, rollback hooks.
+- M11 Zone Editor Interface
+  - Zone editor config sync, live target streaming, and asset handling.
 
 ### 5.3 System Services
 
@@ -99,6 +101,12 @@ HardwareOS consumes LD2450 detections at a fixed frame rate (assumed 10 Hz pendi
 - Execute OTA updates using ESP-IDF workflows.
 - Support rollback on failed boot.
 - See `docs/RS1_OTA_SPEC.md` for OTA interfaces and flow.
+
+### M11 Zone Editor Interface
+
+- Accept zone configuration updates and persist via M06.
+- Provide local API for live target streaming.
+- See `docs/HARDWAREOS_MODULE_ZONE_EDITOR.md` for interface and cloud architecture.
 
 ### M08 Timebase / Scheduler
 
