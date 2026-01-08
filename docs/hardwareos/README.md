@@ -100,13 +100,13 @@ HardwareOS consumes LD2450 detections at a fixed frame rate (assumed 10 Hz pendi
 
 - Execute OTA updates using ESP-IDF workflows.
 - Support rollback on failed boot.
-- See `docs/RS1_OTA_SPEC.md` for OTA interfaces and flow.
+- See `docs/hardwareos/HARDWAREOS_MODULE_OTA.md` for OTA interfaces and flow.
 
 ### M11 Zone Editor Interface
 
 - Accept zone configuration updates and persist via M06.
 - Provide local API for live target streaming.
-- See `docs/HARDWAREOS_MODULE_ZONE_EDITOR.md` for interface and cloud architecture.
+- See `docs/hardwareos/HARDWAREOS_MODULE_ZONE_EDITOR.md` for interface and cloud architecture.
 
 ### M08 Timebase / Scheduler
 
