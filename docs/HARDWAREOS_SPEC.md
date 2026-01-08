@@ -98,6 +98,7 @@ HardwareOS consumes LD2450 detections at a fixed frame rate (assumed 10 Hz pendi
 
 - Execute OTA updates using ESP-IDF workflows.
 - Support rollback on failed boot.
+- See `docs/RS1_OTA_SPEC.md` for OTA interfaces and flow.
 
 ### M08 Timebase / Scheduler
 
@@ -125,4 +126,3 @@ HardwareOS consumes LD2450 detections at a fixed frame rate (assumed 10 Hz pendi
 - Confirm actual LD2450 frame rate and timing jitter.
 - Define memory budget for track/zone limits on ESP32-C3-MINI-1.
 - Define configuration schema for zones and sensitivity.
-
