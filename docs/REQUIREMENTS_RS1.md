@@ -1,0 +1,298 @@
+# RS-1 Requirements Specification
+
+**Version:** 0.2
+**Date:** 2026-01-09
+**Owner:** OpticWorks Product + Engineering
+**Status:** Draft
+
+> This document consolidates product and technical requirements. For product vision, user journeys, and success metrics, see [PRD_RS1.md](PRD_RS1.md).
+
+---
+
+## 1. Product Summary
+
+RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy using a single LD2450 tracking radar. It features mobile onboarding, native Home Assistant discovery via ESPHome-compatible Native API, and cloud-push OTA updates. The product prioritizes UX and software capability (unlimited zones, AR-assisted setup) over multi-sensor hardware complexity.
+
+**Target Price:** $70-80 base device
+**Optional Subscription:** $3-5/month (remote access, AR scanning, analytics)
+
+---
+
+## 2. Scope
+
+### 2.1 In Scope (MVP)
+
+- Single LD2450 radar with ESP32-C3-MINI-1
+- Unlimited software-defined zones
+- ESPHome Native API compatibility
+- Mobile app onboarding (QR + Wi-Fi setup)
+- Manual zone editor (drag/resize/rename)
+- Cloud-push OTA with local fallback
+- Local-first operation (no cloud required for core function)
+
+### 2.2 Out of Scope (MVP)
+
+- Multi-sensor fusion (LD2410, PIR, camera)
+- Enterprise fleet management
+- PoE variant
+- AR-assisted room scanning (post-beta)
+- Consumer retail packaging
+
+---
+
+## 3. Hardware Requirements
+
+### 3.1 Bill of Materials
+
+| Component | Specification | Notes |
+|-----------|---------------|-------|
+| **MCU** | ESP32-C3-MINI-1 | RISC-V, 160MHz, 4MB Flash, 400KB SRAM |
+| **Radar** | Hi-Link LD2450 | 24GHz FMCW, 3 targets, 6m range, 120° H × 60° V |
+| **Interface** | UART | 256000 baud |
+| **Power** | USB-C, 5V | PoE variant out of scope |
+| **Indicator** | Status LED | TBD: color, behavior |
+| **Enclosure** | Wall/ceiling mount | Form factor TBD |
+
+### 3.2 Hardware Constraints
+
+- Single-core operation (ESP32-C3 is single-core RISC-V)
+- 200KB heap budget for application
+- 4MB flash: ~1.5MB per OTA partition, 16KB NVS, 64KB logs
+- No hardware security module (software key storage only)
+
+---
+
+## 4. Firmware Requirements (HardwareOS)
+
+### 4.1 Radar Processing
+
+| Requirement | Specification |
+|-------------|---------------|
+| Target tracking | Up to 3 concurrent targets from LD2450 |
+| Coordinate system | X ±6000mm, Y 0-6000mm from sensor origin |
+| Frame rate | ~33 Hz (30ms frames) |
+| Zone evaluation | Point-in-polygon per zone per frame |
+| Zone count | Unlimited (resource-constrained to ~16 practical) |
+
+### 4.2 Presence Output
+
+| Requirement | Specification |
+|-------------|---------------|
+| Output type | Per-zone binary occupancy + target count |
+| Sensitivity | Configurable per zone (maps to hold time) |
+| Smoothing | Hysteresis state machine to reduce flicker |
+| Latency | Occupancy state updates within 1 second of movement |
+| Stability | Minimal dropouts during micro-movements |
+
+### 4.3 Home Assistant Integration
+
+| Requirement | Specification |
+|-------------|---------------|
+| Protocol | ESPHome Native API (Protobuf over TCP) |
+| Port | 6053 (default) |
+| Discovery | mDNS `_esphomelib._tcp.local` |
+| Encryption | Noise protocol (optional, recommended) |
+| Entities exposed | Per-zone occupancy, per-zone target count, device health, Wi-Fi RSSI |
+| Entities NOT exposed | Raw radar coordinates, track IDs, zone vertices |
+
+### 4.4 Configuration Storage
+
+| Requirement | Specification |
+|-------------|---------------|
+| Backend | ESP-IDF NVS |
+| Atomic writes | Yes, with rollback on failure |
+| Versioning | Incrementing version per zone config update |
+| Encryption | Sensitive fields (passwords, keys) encrypted at rest |
+
+### 4.5 OTA Updates
+
+| Requirement | Specification |
+|-------------|---------------|
+| Trigger | MQTT from cloud orchestrator |
+| Delivery | HTTPS download from CDN |
+| Verification | ECDSA P-256 signature + SHA-256 hash |
+| Rollback | ESP-IDF dual OTA partitions, auto-rollback on failed boot |
+| Local fallback | Serial flash via USB |
+
+### 4.6 Security
+
+| Requirement | Specification |
+|-------------|---------------|
+| Secure boot | ESP32-C3 Secure Boot V2 |
+| Flash encryption | Optional for MVP |
+| Transport | TLS 1.2+ for MQTT and HTTPS |
+| API auth | Noise protocol PSK or legacy password |
+| Anti-rollback | eFuse-based version counter (32 versions max) |
+
+---
+
+## 5. Mobile App Requirements
+
+### 5.1 Platforms
+
+| Requirement | Specification |
+|-------------|---------------|
+| Platforms | iOS, Android (technology stack TBD) |
+| Minimum OS | iOS 15+, Android 10+ |
+
+### 5.2 Onboarding Flow
+
+1. Scan QR code on device
+2. Enter Wi-Fi credentials
+3. Device provisions and connects
+4. Create/edit zones
+5. Confirm setup complete
+
+**Target:** 80% of users complete in ≤60 seconds
+
+### 5.3 Zone Editor
+
+| Feature | Specification |
+|---------|---------------|
+| Zone creation | Tap to add polygon vertices |
+| Zone editing | Drag handles to resize/move |
+| Zone properties | Name, type (include/exclude), sensitivity slider |
+| Live preview | Target positions at ~10 Hz |
+| Validation | Reject self-intersecting polygons |
+
+### 5.4 Device Management
+
+- View device status (firmware version, health, Wi-Fi signal)
+- Trigger OTA update check
+- View update progress
+- Factory reset option
+
+### 5.5 AR Scanning (Post-Beta)
+
+- iOS RoomPlan API integration
+- Auto-propose zone boundaries from room geometry
+- Manual refinement after scan
+
+---
+
+## 6. Cloud Services Requirements
+
+### 6.1 Device Registry
+
+| Requirement | Specification |
+|-------------|---------------|
+| Identity | Derived from ESP32 eFuse MAC |
+| Authentication | Device secret + HMAC-based MQTT credentials |
+| Provisioning | Manufacturing-time secret injection |
+
+### 6.2 OTA Orchestrator
+
+| Requirement | Specification |
+|-------------|---------------|
+| Rollout stages | 1% → 10% → 50% → 100% |
+| Cohort selection | Hash of device_id for stable assignment |
+| Halt condition | >2% failure rate triggers pause |
+| Cooldown | 24-hour per-device minimum between updates |
+
+### 6.3 Telemetry (Opt-In)
+
+| Requirement | Specification |
+|-------------|---------------|
+| Consent | Explicit user opt-in required |
+| Transport | MQTT to cloud ingest |
+| Data collected | System metrics, error counts, no PII |
+| Data NOT collected | Zone names, Wi-Fi SSID, target positions |
+
+### 6.4 Optional Subscription Features
+
+- Remote device access (outside LAN)
+- AR room scanning
+- Analytics dashboard
+- Priority support
+
+---
+
+## 7. Non-Functional Requirements
+
+### 7.1 Performance
+
+| Metric | Requirement |
+|--------|-------------|
+| Radar parse latency | < 1ms per frame |
+| Zone evaluation | < 500µs per frame (3 targets × 16 zones) |
+| State update latency | < 50ms from detection to HA |
+| Memory (heap) | < 200KB total |
+| CPU utilization | < 50% sustained |
+
+### 7.2 Reliability
+
+| Metric | Requirement |
+|--------|-------------|
+| Uptime | Continuous operation without reboot (except OTA) |
+| Watchdog recovery | < 10 seconds from hang to operational |
+| OTA success rate | > 99% |
+| False vacancy rate | < 5% during normal activity |
+
+### 7.3 Security
+
+| Metric | Requirement |
+|--------|-------------|
+| Firmware signing | All production firmware signed |
+| Transport encryption | TLS 1.2+ for all cloud connections |
+| Credential storage | Encrypted at rest |
+| No cloud dependency | Core presence detection works offline |
+
+### 7.4 Compatibility
+
+| Metric | Requirement |
+|--------|-------------|
+| Home Assistant | 2024.1+ |
+| ESPHome protocol | Native API v1.9+ |
+| Wi-Fi | 802.11 b/g/n (2.4GHz) |
+
+---
+
+## 8. UX Principles
+
+1. **Hide complexity** - Present single confident presence answer, not raw sensor data
+2. **Minimize entities** - Curated HA entities, no entity sprawl
+3. **Consumer-grade setup** - App-first, guided steps, no YAML editing
+4. **Sensible defaults** - Works out of box, advanced settings optional
+5. **Local-first** - Full functionality without cloud account
+
+---
+
+## 9. Constraints and Assumptions
+
+### 9.1 Constraints
+
+| Constraint | Impact |
+|------------|--------|
+| Single radar | Cannot detect fully stationary occupants reliably |
+| ESP32-C3 single-core | No parallel processing, careful task scheduling required |
+| 4MB flash | OTA partition size limited to ~1.5MB |
+| eFuse anti-rollback | Maximum 32 security-critical updates over device lifetime |
+
+### 9.2 Assumptions
+
+| Assumption | If Changed |
+|------------|------------|
+| LD2450 frame rate ~33 Hz | Tracking timing, buffer sizing |
+| LD2450 max 3 targets | Data structures, zone evaluation |
+| Typical occlusions < 2 seconds | Hold time defaults |
+| User prefers false occupancy over false vacancy | Smoothing bias |
+
+---
+
+## 10. Milestones
+
+| Milestone | Target | Deliverables |
+|-----------|--------|--------------|
+| M0 | Dec 2025 | Architecture validation, Native API compatibility |
+| M1 | Jan 2026 | Mobile onboarding MVP, zone editor |
+| M2 | Feb 2026 | OTA infrastructure, staged rollout |
+| M3 | Mar 2026 | Beta launch |
+
+---
+
+## 11. Document History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-01-XX | OpticWorks | Initial draft (split docs) |
+| 0.2 | 2026-01-09 | OpticWorks | Consolidated PRODUCT_SPEC + TECH_REQUIREMENTS |
