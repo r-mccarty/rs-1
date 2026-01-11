@@ -6,7 +6,7 @@ A custom-firmware presence sensor built on ESP32-C3 and LD2450 mmWave radar, des
 
 ## Overview
 
-RS-1 is a zone-based presence sensor that runs **HardwareOS**, a custom firmware stack providing reliable occupancy detection with low flicker. Unlike typical ESPHome implementations, RS-1 includes multi-target tracking, occlusion prediction, and confidence-based smoothing for stable presence output.
+RS-1 is a zone-based presence sensor that runs **HardwareOS**, a custom firmware stack providing reliable occupancy detection with low flicker. Unlike typical ESPHome implementations, RS-1 includes multi-target Kalman tracking, occlusion prediction, and confidence-based smoothing for stable presence output.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -16,6 +16,12 @@ RS-1 is a zone-based presence sensor that runs **HardwareOS**, a custom firmware
 │   │ LD2450  │───▶│  HardwareOS  │───▶│   Home Assistant    │   │
 │   │  Radar  │    │   Firmware   │    │   (Native API)      │   │
 │   └─────────┘    └──────────────┘    └─────────────────────┘   │
+│                         │                                       │
+│                         ▼                                       │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │                   OpticWorks Cloud                       │   │
+│   │  OTA Orchestrator │ Device Registry │ Telemetry │ MQTT  │   │
+│   └─────────────────────────────────────────────────────────┘   │
 │                         │                                       │
 │                         ▼                                       │
 │                  ┌──────────────┐                               │
@@ -36,7 +42,7 @@ RS-1 is a zone-based presence sensor that runs **HardwareOS**, a custom firmware
 | **Detection Range** | Up to 6 meters |
 | **Field of View** | 120° horizontal, 60° vertical |
 | **Targets Tracked** | Up to 3 simultaneously |
-| **Update Rate** | ~33 Hz (30ms frames) |
+| **Update Rate** | 33 Hz (30ms frames) |
 | **Connectivity** | Wi-Fi 802.11 b/g/n |
 | **Power** | USB-C, 5V |
 
@@ -47,13 +53,14 @@ RS-1 is a zone-based presence sensor that runs **HardwareOS**, a custom firmware
 | Feature | Description |
 |---------|-------------|
 | **Zone-Based Presence** | Define polygon zones; get per-zone occupancy |
-| **Multi-Target Tracking** | Track up to 3 targets with position and velocity |
+| **Multi-Target Tracking** | Kalman filter tracking with position and velocity |
 | **Occlusion Handling** | Predict through brief dropouts, reduce false vacancy |
 | **Sensitivity Control** | Tune hold times and responsiveness per zone |
 | **Home Assistant Native** | ESPHome-compatible API, auto-discovery |
 | **Local-First** | Full functionality without cloud |
-| **Secure OTA** | Signed firmware updates with rollback |
+| **Secure OTA** | Signed firmware updates with staged rollouts |
 | **Zone Editor** | Visual zone configuration via web or mobile |
+| **Cloud Telemetry** | Optional device health monitoring and alerts |
 
 ---
 
@@ -62,69 +69,72 @@ RS-1 is a zone-based presence sensor that runs **HardwareOS**, a custom firmware
 ```
 rs-1/
 ├── README.md                 # This file
-├── CLAUDE.md                 # Agent instructions (→ AGENTS.md)
+├── CLAUDE.md                 # Agent instructions (-> AGENTS.md)
 ├── LICENSE                   # MIT License
 │
 └── docs/
     ├── PRD_RS1.md            # Product requirements
-    ├── PRODUCT_SPEC_RS1.md   # Product specification
-    ├── TECH_REQUIREMENTS_RS1.md  # Technical requirements
-    ├── VALIDATION_PLAN_RS1.md    # Testing and validation
+    ├── REQUIREMENTS_RS1.md   # Functional requirements
     │
-    ├── hardwareos/           # Firmware architecture
-    │   ├── README.md         # HardwareOS overview + diagrams
-    │   ├── HARDWAREOS_MODULE_RADAR_INGEST.md     # M01
-    │   ├── HARDWAREOS_MODULE_TRACKING.md         # M02
-    │   ├── HARDWAREOS_MODULE_ZONE_ENGINE.md      # M03
-    │   ├── HARDWAREOS_MODULE_PRESENCE_SMOOTHING.md # M04
-    │   ├── HARDWAREOS_MODULE_NATIVE_API.md       # M05
-    │   ├── HARDWAREOS_MODULE_CONFIG_STORE.md     # M06
-    │   ├── HARDWAREOS_MODULE_OTA.md              # M07
-    │   ├── HARDWAREOS_MODULE_TIMEBASE.md         # M08
-    │   ├── HARDWAREOS_MODULE_LOGGING.md          # M09
-    │   ├── HARDWAREOS_MODULE_SECURITY.md         # M10
-    │   └── HARDWAREOS_MODULE_ZONE_EDITOR.md      # M11
+    ├── firmware/             # Device firmware specs (11 modules)
+    │   ├── README.md         # HardwareOS architecture + diagrams
+    │   ├── HARDWAREOS_MODULE_*.md  # Per-module specifications
+    │   ├── BOOT_SEQUENCE.md  # Module initialization order
+    │   ├── COORDINATE_SYSTEM.md  # Sensor coordinate system
+    │   ├── MEMORY_BUDGET.md  # Resource constraints
+    │   ├── DEGRADED_MODES.md # Failure handling behaviors
+    │   └── GLOSSARY.md       # Term definitions
     │
-    ├── references/           # Research and reference docs
-    │   ├── REFERENCE_FIRMWARE_ARCHITECTURE.md
-    │   ├── REFERENCE_SENSY_ZONE_EDITOR.md
-    │   └── WIRING.md
+    ├── cloud/                # Backend service specs
+    │   ├── README.md         # Cloud architecture overview
+    │   ├── SERVICE_OTA_ORCHESTRATOR.md   # Staged rollouts
+    │   ├── SERVICE_DEVICE_REGISTRY.md    # Device management
+    │   ├── SERVICE_TELEMETRY.md          # Metrics ingestion
+    │   └── INFRASTRUCTURE.md # Cloudflare + EMQX config
     │
+    ├── contracts/            # Firmware-cloud agreements
+    │   ├── PROTOCOL_MQTT.md  # MQTT topics and payloads
+    │   ├── SCHEMA_*.json     # JSON schemas for payloads
+    │   └── MOCK_BOUNDARIES.md  # Testing strategy
+    │
+    ├── testing/              # Test specifications
+    │   ├── INTEGRATION_TESTS.md  # Cross-module scenarios
+    │   └── VALIDATION_PLAN_RS1.md  # Validation plan
+    │
+    ├── reviews/              # Architecture reviews
+    │   └── RFD_001_HARDWAREOS_ARCHITECTURE_REVIEW.md
+    │
+    ├── references/           # Research docs
     └── archived/             # Historical docs
-        └── SPRINT.md
 ```
 
 ---
 
-## HardwareOS Architecture
+## Architecture
 
-HardwareOS is an 11-module firmware stack. See [docs/hardwareos/README.md](docs/hardwareos/README.md) for full architecture documentation.
+### Firmware (HardwareOS)
 
-### Core Data Path
+HardwareOS is an 11-module firmware stack. See [docs/firmware/README.md](docs/firmware/README.md) for full documentation.
 
-| Module | Name | Purpose |
-|--------|------|---------|
-| M01 | Radar Ingest | Parse LD2450 UART frames |
-| M02 | Tracking | Multi-target tracking with occlusion prediction |
-| M03 | Zone Engine | Point-in-polygon zone evaluation |
-| M04 | Presence Smoothing | Hysteresis and hold logic |
+| Layer | Modules | Purpose |
+|-------|---------|---------|
+| **Data Path** | M01, M02, M03, M04 | Radar → Tracking → Zones → Presence |
+| **Interfaces** | M05, M07, M11 | Home Assistant, OTA, Zone Editor |
+| **Services** | M06, M08, M09, M10 | Config, Timing, Logging, Security |
 
-### External Interfaces
+### Cloud Services
 
-| Module | Name | Purpose |
-|--------|------|---------|
-| M05 | Native API | ESPHome-compatible Home Assistant integration |
-| M07 | OTA Manager | Secure firmware updates |
-| M11 | Zone Editor | Visual zone configuration interface |
+Backend runs on Cloudflare (Workers, D1, R2) with EMQX for MQTT. See [docs/cloud/README.md](docs/cloud/README.md) for full documentation.
 
-### System Services
+| Service | Purpose |
+|---------|---------|
+| **OTA Orchestrator** | Staged firmware rollouts with automatic abort |
+| **Device Registry** | Device identity, ownership, state tracking |
+| **Telemetry** | Metrics ingestion, health monitoring, alerts |
 
-| Module | Name | Purpose |
-|--------|------|---------|
-| M06 | Config Store | Persistent configuration with rollback |
-| M08 | Timebase | Frame timing and task scheduling |
-| M09 | Logging | Diagnostics and optional telemetry |
-| M10 | Security | Secure boot, signing, TLS |
+### Contracts
+
+Firmware and cloud communicate via MQTT with JSON payloads. Schemas in [docs/contracts/](docs/contracts/) define the interface and enable independent testing.
 
 ---
 
@@ -133,10 +143,11 @@ HardwareOS is an 11-module firmware stack. See [docs/hardwareos/README.md](docs/
 | Document | Description |
 |----------|-------------|
 | [PRD_RS1.md](docs/PRD_RS1.md) | Product requirements and user stories |
-| [PRODUCT_SPEC_RS1.md](docs/PRODUCT_SPEC_RS1.md) | Detailed product specification |
-| [TECH_REQUIREMENTS_RS1.md](docs/TECH_REQUIREMENTS_RS1.md) | Technical requirements |
-| [VALIDATION_PLAN_RS1.md](docs/VALIDATION_PLAN_RS1.md) | Testing and validation plan |
-| [HardwareOS README](docs/hardwareos/README.md) | Firmware architecture with diagrams |
+| [REQUIREMENTS_RS1.md](docs/REQUIREMENTS_RS1.md) | Functional requirements |
+| [Firmware README](docs/firmware/README.md) | HardwareOS architecture |
+| [Cloud README](docs/cloud/README.md) | Cloud services architecture |
+| [MQTT Protocol](docs/contracts/PROTOCOL_MQTT.md) | Firmware-cloud communication |
+| [Integration Tests](docs/testing/INTEGRATION_TESTS.md) | Cross-module test scenarios |
 
 ---
 
@@ -144,9 +155,11 @@ HardwareOS is an 11-module firmware stack. See [docs/hardwareos/README.md](docs/
 
 | Phase | Status | Description |
 |-------|--------|-------------|
-| **Specification** | Complete | PRD, tech requirements, module specs |
-| **Architecture** | Complete | HardwareOS 11-module design |
+| **Specification** | Complete | PRD, requirements, module specs |
+| **Architecture** | Complete | Firmware (11 modules) + Cloud (4 services) |
+| **Contracts** | Complete | MQTT protocol, JSON schemas |
 | **Firmware** | Not Started | ESP-IDF implementation |
+| **Cloud** | Not Started | Cloudflare Workers implementation |
 | **Hardware** | Not Started | PCB design, enclosure |
 | **Zone Editor** | Not Started | Web/mobile app |
 
@@ -196,3 +209,4 @@ MIT License - See [LICENSE](LICENSE) for details.
 - [Home Assistant](https://home-assistant.io)
 - [ESP-IDF Documentation](https://docs.espressif.com/projects/esp-idf/)
 - [LD2450 Datasheet](https://www.hlktech.net/index.php?id=1157)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/)

@@ -10,6 +10,7 @@ RS-1 is a presence sensor product from OpticWorks, built on:
 - **MCU**: ESP32-C3-MINI-1
 - **Radar**: LD2450 (24GHz mmWave, 3 targets, 6m range)
 - **Firmware**: HardwareOS (custom ESP-IDF stack)
+- **Cloud**: Cloudflare Workers + D1 + R2, EMQX for MQTT
 - **Integration**: ESPHome Native API for Home Assistant
 
 ---
@@ -19,57 +20,90 @@ RS-1 is a presence sensor product from OpticWorks, built on:
 ```
 rs-1/
 ├── README.md                 # Project overview
-├── CLAUDE.md → AGENTS.md     # This file (symlinked)
+├── CLAUDE.md -> AGENTS.md    # This file (symlinked)
 ├── LICENSE                   # MIT
 │
 └── docs/
     ├── PRD_RS1.md            # Product requirements
     ├── REQUIREMENTS_RS1.md   # Functional requirements
     │
-    ├── firmware/             # Device firmware specs
+    ├── firmware/             # Device firmware specs (11 modules)
     │   ├── README.md         # Architecture overview with diagrams
     │   ├── HARDWAREOS_MODULE_*.md  # Per-module specifications
     │   ├── BOOT_SEQUENCE.md  # Module initialization order
-    │   ├── COORDINATE_SYSTEM.md  # Sensor coordinate system
-    │   ├── MEMORY_BUDGET.md  # Resource constraints
-    │   ├── DEGRADED_MODES.md # Failure handling
-    │   └── GLOSSARY.md       # Term definitions
+    │   ├── COORDINATE_SYSTEM.md  # Sensor coordinate system (mm canonical)
+    │   ├── MEMORY_BUDGET.md  # Resource constraints (200KB heap)
+    │   ├── DEGRADED_MODES.md # Failure handling behaviors
+    │   └── GLOSSARY.md       # Canonical term definitions
+    │
+    ├── cloud/                # Backend service specs
+    │   ├── README.md         # Cloud architecture overview
+    │   ├── SERVICE_OTA_ORCHESTRATOR.md   # Staged firmware rollouts
+    │   ├── SERVICE_DEVICE_REGISTRY.md    # Device identity/enrollment
+    │   ├── SERVICE_TELEMETRY.md          # Metrics ingestion
+    │   └── INFRASTRUCTURE.md # Cloudflare + EMQX configuration
     │
     ├── contracts/            # Firmware-cloud agreements
     │   ├── PROTOCOL_MQTT.md  # MQTT topics and payloads
-    │   ├── SCHEMA_*.json     # JSON schemas
-    │   └── MOCK_BOUNDARIES.md  # Testing strategy
+    │   ├── SCHEMA_ZONE_CONFIG.json    # Zone configuration schema
+    │   ├── SCHEMA_OTA_MANIFEST.json   # OTA trigger schema
+    │   ├── SCHEMA_TELEMETRY.json      # Telemetry payload schema
+    │   ├── SCHEMA_DEVICE_STATE.json   # Device state schema
+    │   └── MOCK_BOUNDARIES.md  # Contract-based testing strategy
     │
     ├── testing/              # Test specifications
     │   ├── INTEGRATION_TESTS.md  # Cross-module test scenarios
     │   └── VALIDATION_PLAN_RS1.md  # Overall validation plan
     │
     ├── reviews/              # Architecture reviews
-    │   └── RFD_001_*.md      # Review documents
+    │   └── RFD_001_HARDWAREOS_ARCHITECTURE_REVIEW.md
     │
     ├── references/           # Research docs
+    │   ├── REFERENCE_FIRMWARE_ARCHITECTURE.md
+    │   ├── REFERENCE_SENSY_ZONE_EDITOR.md
+    │   └── WIRING.md
+    │
     └── archived/             # Historical docs
 ```
 
 ---
 
-## HardwareOS Modules
+## HardwareOS Firmware Modules
 
 The firmware is organized into 11 modules. Always reference the module specs when working on firmware:
 
 | Module | File | Purpose |
 |--------|------|---------|
-| M01 | `HARDWAREOS_MODULE_RADAR_INGEST.md` | LD2450 UART parsing |
-| M02 | `HARDWAREOS_MODULE_TRACKING.md` | Multi-target Kalman tracking |
-| M03 | `HARDWAREOS_MODULE_ZONE_ENGINE.md` | Zone occupancy |
-| M04 | `HARDWAREOS_MODULE_PRESENCE_SMOOTHING.md` | Flicker reduction |
-| M05 | `HARDWAREOS_MODULE_NATIVE_API.md` | Home Assistant API |
-| M06 | `HARDWAREOS_MODULE_CONFIG_STORE.md` | Persistent config |
-| M07 | `HARDWAREOS_MODULE_OTA.md` | Firmware updates |
-| M08 | `HARDWAREOS_MODULE_TIMEBASE.md` | Timing/scheduling |
-| M09 | `HARDWAREOS_MODULE_LOGGING.md` | Diagnostics |
-| M10 | `HARDWAREOS_MODULE_SECURITY.md` | Secure boot/TLS |
-| M11 | `HARDWAREOS_MODULE_ZONE_EDITOR.md` | Zone config interface |
+| M01 | `HARDWAREOS_MODULE_RADAR_INGEST.md` | LD2450 UART parsing, disconnect detection |
+| M02 | `HARDWAREOS_MODULE_TRACKING.md` | Multi-target Kalman tracking (state machine) |
+| M03 | `HARDWAREOS_MODULE_ZONE_ENGINE.md` | Zone occupancy, point-in-polygon |
+| M04 | `HARDWAREOS_MODULE_PRESENCE_SMOOTHING.md` | Flicker reduction, hold time |
+| M05 | `HARDWAREOS_MODULE_NATIVE_API.md` | ESPHome Native API for Home Assistant |
+| M06 | `HARDWAREOS_MODULE_CONFIG_STORE.md` | NVS persistence, commit policy |
+| M07 | `HARDWAREOS_MODULE_OTA.md` | Firmware updates via MQTT |
+| M08 | `HARDWAREOS_MODULE_TIMEBASE.md` | Timing, scheduling, watchdog |
+| M09 | `HARDWAREOS_MODULE_LOGGING.md` | Diagnostics, telemetry |
+| M10 | `HARDWAREOS_MODULE_SECURITY.md` | Secure boot, TLS, pairing |
+| M11 | `HARDWAREOS_MODULE_ZONE_EDITOR.md` | Zone config interface (cloud) |
+
+---
+
+## Cloud Services
+
+Backend services run on Cloudflare with EMQX for MQTT:
+
+| Service | Document | Purpose |
+|---------|----------|---------|
+| OTA Orchestrator | `SERVICE_OTA_ORCHESTRATOR.md` | Staged rollouts, abort on failure |
+| Device Registry | `SERVICE_DEVICE_REGISTRY.md` | Device identity, ownership, state |
+| Telemetry | `SERVICE_TELEMETRY.md` | Metrics ingestion, alerting |
+| Infrastructure | `INFRASTRUCTURE.md` | Workers, D1, R2, EMQX config |
+
+### Cloud Stack
+- **Compute**: Cloudflare Workers (TypeScript)
+- **Database**: Cloudflare D1 (SQLite at edge)
+- **Storage**: Cloudflare R2 (firmware, telemetry archives)
+- **MQTT**: EMQX Cloud (device communication)
 
 ---
 
@@ -77,7 +111,7 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 
 ### LD2450 Radar
 - UART: 256000 baud
-- Frame rate: ~33 Hz (30ms)
+- Frame rate: **33 Hz** (30ms period)
 - Max targets: 3
 - Coordinate range: X ±6000mm, Y 0-6000mm
 - Frame size: 40 bytes
@@ -87,6 +121,13 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 - Flash: 4MB
 - SRAM: 400KB (200KB heap available)
 - Framework: ESP-IDF 5.x
+
+### Coordinate System
+- **Canonical unit**: millimeters (mm)
+- **Origin**: Sensor center
+- **+X**: Observer's right when facing sensor
+- **+Y**: Away from sensor (into room)
+- **Conversion**: Zone Editor uses meters, converted at M11 boundary
 
 ### Home Assistant Integration
 - Protocol: ESPHome Native API (Protobuf over TCP)
@@ -98,11 +139,11 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 
 ## Development Guidelines
 
-### Documentation
+### Documentation First
 - Each module has an **Assumptions** table - check these when requirements change
 - Architecture diagrams are in `docs/firmware/README.md`
-- Reference docs in `docs/references/` contain research and competitor analysis
 - MQTT protocol is defined in `docs/contracts/PROTOCOL_MQTT.md`
+- Cloud services are defined in `docs/cloud/`
 
 ### Code Style (When Firmware Exists)
 - Follow ESP-IDF coding conventions
@@ -112,6 +153,7 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 ### Testing
 - Unit tests should mock hardware dependencies
 - Integration tests use simulated radar data
+- Contract schemas in `docs/contracts/` define mock boundaries
 - See `docs/testing/VALIDATION_PLAN_RS1.md` for test requirements
 - See `docs/testing/INTEGRATION_TESTS.md` for cross-module scenarios
 
@@ -119,25 +161,29 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 
 ## Common Tasks
 
-### Reading Module Specs
+### Reading Documentation
 ```bash
-# View all module specs
+# Firmware module specs
 ls docs/firmware/HARDWAREOS_MODULE_*.md
 
-# Read a specific module
-cat docs/firmware/HARDWAREOS_MODULE_TRACKING.md
+# Cloud service specs
+ls docs/cloud/SERVICE_*.md
+
+# Contract schemas
+ls docs/contracts/SCHEMA_*.json
 ```
 
 ### Updating Documentation
 - Module specs follow a consistent format (Purpose, Assumptions, Inputs, Outputs, etc.)
 - Always update the Assumptions table when requirements change
 - Keep ASCII diagrams in sync with implementation
+- Update contracts/ if firmware-cloud interface changes
 
 ### Adding New Features
 1. Check if feature fits existing module or needs new module
-2. Update relevant module spec first
-3. Update `docs/firmware/README.md` if architecture changes
-4. Update MQTT contract if cloud communication affected
+2. Update relevant module spec first (firmware or cloud)
+3. Update `docs/firmware/README.md` or `docs/cloud/README.md` if architecture changes
+4. Update MQTT contract if communication affected
 5. Implement feature following spec
 
 ---
@@ -148,12 +194,14 @@ These are critical assumptions. If any change, review affected modules:
 
 | Assumption | Value | Affects |
 |------------|-------|---------|
-| LD2450 frame rate | ~33 Hz | M01, M02, M08 |
+| LD2450 frame rate | **33 Hz** | M01, M02, M04, M08 |
 | Max targets | 3 | M01, M02, M03 |
+| Coordinate unit | **mm** (canonical) | M01, M02, M03, M11 |
 | Coordinate range | X ±6000mm, Y 0-6000mm | M01, M03 |
-| ESPHome API version | 1.9+ | M05 |
-| Occlusion duration | < 2 seconds typical | M04 |
 | Heap budget | 200KB available | All modules |
+| TLS memory | ~33KB per connection | M05, M07, M10 |
+| NVS commits | On change only (<10/day) | M06, M08 |
+| Sensitivity | `hold_time_ms = (100 - sensitivity) * 50` | M03, M04, M11 |
 
 ---
 
@@ -164,8 +212,11 @@ These are critical assumptions. If any change, review affected modules:
 | `docs/firmware/GLOSSARY.md` | Canonical term definitions |
 | `docs/firmware/COORDINATE_SYSTEM.md` | Sensor coordinate system |
 | `docs/firmware/MEMORY_BUDGET.md` | Resource constraints |
-| `docs/firmware/BOOT_SEQUENCE.md` | Module initialization |
-| `docs/contracts/PROTOCOL_MQTT.md` | Cloud communication |
+| `docs/firmware/BOOT_SEQUENCE.md` | Module initialization DAG |
+| `docs/firmware/DEGRADED_MODES.md` | Failure handling behaviors |
+| `docs/contracts/PROTOCOL_MQTT.md` | Cloud communication protocol |
+| `docs/cloud/README.md` | Cloud architecture overview |
+| `docs/testing/INTEGRATION_TESTS.md` | Cross-module test scenarios |
 
 ---
 
@@ -175,3 +226,5 @@ These are critical assumptions. If any change, review affected modules:
 - [ESPHome Native API](https://esphome.io/components/api.html)
 - [LD2450 Datasheet](https://www.hlktech.net/index.php?id=1157)
 - [Noise Protocol](https://noiseprotocol.org/)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/)
+- [EMQX Documentation](https://docs.emqx.com/)
