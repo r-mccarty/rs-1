@@ -118,6 +118,69 @@ typedef struct {
 | Checksum failure | Computed != received | Discard frame, increment error counter |
 | Frame timeout | No frame in 100ms | Log warning, notify M09 |
 | Buffer overflow | Ring buffer full | Discard oldest bytes, log |
+| Radar disconnect | No frames for 3s | Enter DISCONNECTED state, notify M08 |
+
+### 6.1 Radar Disconnect Handling
+
+**Critical:** If the radar stops sending frames (hardware failure, cable disconnect), the system must handle gracefully without entering a watchdog reset loop.
+
+**State Machine:**
+```
+    CONNECTED ──(no frame 3s)──▶ DISCONNECTED
+        ▲                              │
+        │                              │
+        └────(frame received)──────────┘
+```
+
+**Implementation:**
+```c
+typedef enum {
+    RADAR_STATE_DISCONNECTED,
+    RADAR_STATE_CONNECTED
+} radar_state_t;
+
+static radar_state_t radar_state = RADAR_STATE_DISCONNECTED;
+static uint32_t last_frame_ms = 0;
+
+#define RADAR_DISCONNECT_TIMEOUT_MS 3000
+
+void radar_check_connection(void) {
+    uint32_t now = timebase_uptime_ms();
+
+    if (radar_state == RADAR_STATE_CONNECTED) {
+        if (now - last_frame_ms > RADAR_DISCONNECT_TIMEOUT_MS) {
+            radar_state = RADAR_STATE_DISCONNECTED;
+            ESP_LOGW(TAG, "Radar disconnected (no frames for %dms)",
+                     RADAR_DISCONNECT_TIMEOUT_MS);
+            // Notify watchdog that radar silence is expected
+            watchdog_set_radar_disconnected(true);
+            // Notify telemetry
+            log_event("radar_disconnected");
+        }
+    }
+}
+
+void radar_on_frame_received(void) {
+    last_frame_ms = timebase_uptime_ms();
+
+    if (radar_state == RADAR_STATE_DISCONNECTED) {
+        radar_state = RADAR_STATE_CONNECTED;
+        ESP_LOGI(TAG, "Radar reconnected");
+        watchdog_set_radar_disconnected(false);
+        log_event("radar_reconnected");
+    }
+}
+
+// Public API for M08 watchdog
+bool radar_is_connected(void) {
+    return radar_state == RADAR_STATE_CONNECTED;
+}
+```
+
+**M08 Watchdog Integration:**
+- When radar is disconnected, M08 should NOT expect radar frame feeds
+- System continues operating in degraded mode (no presence detection)
+- Watchdog accepts DISCONNECTED as a valid state
 
 ## 7. Configuration Parameters
 

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opticworks.io/schemas/telemetry.json",
+  "title": "RS-1 Telemetry",
+  "description": "Telemetry payload sent from device to cloud. Contains metrics and optional log entries.",
+  "type": "object",
+  "required": ["device_id", "timestamp", "metrics"],
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{32}$",
+      "description": "32-character hex device identifier derived from MAC"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of telemetry batch"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Key-value pairs of metric names and values",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "number" },
+          { "type": "integer" }
+        ]
+      },
+      "propertyNames": {
+        "pattern": "^[a-z_]+\\.[a-z_]+$"
+      }
+    },
+    "logs": {
+      "type": "array",
+      "description": "Optional array of log entries (requires user opt-in)",
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/logEntry"
+      }
+    },
+    "firmware_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$",
+      "description": "Current firmware version"
+    },
+    "uptime_sec": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Device uptime in seconds"
+    }
+  },
+  "$defs": {
+    "logEntry": {
+      "type": "object",
+      "required": ["ts", "lvl", "tag", "msg"],
+      "properties": {
+        "ts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Timestamp in milliseconds since boot"
+        },
+        "lvl": {
+          "type": "string",
+          "enum": ["E", "W", "I", "D", "V"],
+          "description": "Log level: Error, Warning, Info, Debug, Verbose"
+        },
+        "tag": {
+          "type": "string",
+          "maxLength": 16,
+          "description": "Module tag"
+        },
+        "msg": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Log message (truncated if necessary)"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "device_id": "aabbccddeeff00112233445566778899",
+      "timestamp": "2026-01-15T10:00:00Z",
+      "firmware_version": "1.2.0",
+      "uptime_sec": 86400,
+      "metrics": {
+        "system.uptime_sec": 86400,
+        "system.free_heap": 45000,
+        "system.wifi_rssi": -55,
+        "radar.frames_received": 2880000,
+        "radar.frames_invalid": 12,
+        "zone.occupancy_changes": 142,
+        "tracking.active_tracks": 1
+      },
+      "logs": [
+        {"ts": 86399000, "lvl": "W", "tag": "ZONE", "msg": "Flicker detected in zone_kitchen"},
+        {"ts": 86395000, "lvl": "I", "tag": "OTA", "msg": "Update check: up to date"}
+      ]
+    }
+  ]
+}

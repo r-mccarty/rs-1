@@ -286,18 +286,38 @@ esp_err_t security_noise_decrypt(noise_session_t *session, const uint8_t *cipher
 
 Device pairing for zone editor and local API:
 
+**Critical:** The pairing CODE has a short validity (5 minutes), but the SESSION TOKEN generated after successful pairing has a longer validity (1 hour) to allow for extended zone editing sessions. See RFD-001 issue C9.
+
 ```c
 typedef struct {
     uint8_t pairing_code[6];        // 6-digit code (displayed/QR)
-    uint8_t pairing_token[16];      // Derived session token
-    uint32_t valid_until;           // Expiration timestamp
+    uint32_t code_valid_until;      // Code expiration (5 minutes)
+} pairing_request_t;
+
+typedef struct {
+    uint8_t session_token[16];      // Session token for API access
+    uint32_t token_valid_until;     // Token expiration (1 hour)
+    char client_id[32];             // Client identifier
 } pairing_session_t;
 
 // Generate pairing code (valid for 5 minutes)
-void security_generate_pairing(pairing_session_t *session);
+void security_generate_pairing(pairing_request_t *request);
 
-// Validate pairing attempt
-bool security_validate_pairing(const char *code, uint8_t *token_out);
+// Validate pairing attempt, returns session token valid for 1 hour
+bool security_validate_pairing(const char *code, pairing_session_t *session_out);
+
+// Check if session token is still valid
+bool security_session_valid(const uint8_t *token);
+```
+
+**Pairing Flow:**
+```
+1. User initiates pairing (button press or app request)
+2. Device generates 6-digit code, displays/QR (valid 5 min)
+3. User enters code in Zone Editor app
+4. Device validates code, generates session token (valid 1 hour)
+5. App uses session token for all subsequent API calls
+6. After 1 hour, session expires, user must re-pair
 ```
 
 ## 9. Key Management
@@ -364,7 +384,8 @@ esp_efuse_write_field_cnt(ESP_EFUSE_SECURE_VERSION, new_security_version);
 | `flash_encryption` | bool | false | Enable flash encryption |
 | `tls_min_version` | uint8 | TLS1.2 | Minimum TLS version |
 | `api_encryption_required` | bool | true | Require Noise for API |
-| `pairing_timeout_sec` | uint16 | 300 | Pairing code validity |
+| `pairing_code_timeout_sec` | uint16 | 300 | Pairing code validity (5 min) |
+| `session_token_timeout_sec` | uint32 | 3600 | Session token validity (1 hour) |
 
 ## 12. Security Events
 

@@ -1,7 +1,7 @@
 # HardwareOS Timebase / Scheduler Module Specification (M08)
 
-Version: 0.1
-Date: 2026-01-XX
+Version: 0.2
+Date: 2026-01-09
 Owner: OpticWorks Firmware
 Status: Draft
 
@@ -161,9 +161,10 @@ bool watchdog_healthy(void);
 | `health_check` | 1000ms | Feed watchdog, check system health |
 | `wifi_monitor` | 5000ms | Check Wi-Fi connectivity |
 | `ntp_sync` | 3600000ms | Hourly NTP resync |
-| `nvs_commit` | 60000ms | Commit pending NVS writes |
 | `telemetry_flush` | 10000ms | Flush telemetry buffer (if enabled) |
 | `memory_check` | 30000ms | Log heap stats |
+
+**Note:** NVS commits are NOT scheduled automatically. See M06 Config Store for the commit-on-change policy. Automatic periodic NVS commits would cause premature flash wear (~69 days to failure at 60s intervals).
 
 ### 5.2 Task Priority
 
@@ -229,13 +230,34 @@ void pipeline_tick(void) {
 
 ### 7.1 Feed Sources
 
-| Source ID | Component | Feed Interval |
-|-----------|-----------|---------------|
-| 0 | Main loop | Every tick |
-| 1 | Radar ingest | Every frame |
-| 2 | Wi-Fi task | Every 1s |
+| Source ID | Component | Feed Interval | Optional |
+|-----------|-----------|---------------|----------|
+| 0 | Main loop | Every tick | No |
+| 1 | Radar ingest | Every frame | **Yes** (when disconnected) |
+| 2 | Wi-Fi task | Every 1s | Yes (offline mode) |
 
-### 7.2 Watchdog Policy
+### 7.2 Radar Disconnect Handling
+
+**Critical:** The watchdog MUST NOT reset the system when radar is disconnected. This prevents infinite reboot loops on hardware failure.
+
+```c
+static bool radar_disconnected = false;
+
+void watchdog_set_radar_disconnected(bool disconnected) {
+    radar_disconnected = disconnected;
+    if (disconnected) {
+        // Remove radar from expected feed sources
+        expected_sources &= ~(1 << SOURCE_RADAR);
+        ESP_LOGW(TAG, "Watchdog: radar feed no longer required");
+    } else {
+        // Add radar back to expected sources
+        expected_sources |= (1 << SOURCE_RADAR);
+        ESP_LOGI(TAG, "Watchdog: radar feed required again");
+    }
+}
+```
+
+### 7.3 Watchdog Policy
 
 ```c
 void health_check_task(void *arg) {
@@ -345,3 +367,12 @@ On watchdog timeout:
 - Should scheduler support task priorities beyond execution order?
 - Optimal watchdog timeout for OTA (may need longer)?
 - Handle daylight saving time changes?
+
+---
+
+## 15. Document History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-01-XX | OpticWorks | Initial draft |
+| 0.2 | 2026-01-09 | OpticWorks | Removed nvs_commit from scheduled tasks. NVS commits on-change only per M06 policy. Addresses RFD-001 issue C5. |

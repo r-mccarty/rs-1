@@ -258,8 +258,8 @@ Explicitly out of scope for this document (covered elsewhere):
 | Topic | Document |
 |-------|----------|
 | Detailed functional requirements | [REQUIREMENTS_RS1.md](REQUIREMENTS_RS1.md) |
-| Firmware architecture | [docs/hardwareos/README.md](hardwareos/README.md) |
-| Test plan | [VALIDATION_PLAN_RS1.md](VALIDATION_PLAN_RS1.md) |
+| Firmware architecture | [docs/firmware/README.md](firmware/README.md) |
+| Test plan | [testing/VALIDATION_PLAN_RS1.md](testing/VALIDATION_PLAN_RS1.md) |
 | Competitive analysis | [opticworks_rs1_competitive_analysis_v2.docx.md](opticworks_rs1_competitive_analysis_v2.docx.md) |
 
 ---

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opticworks.io/schemas/ota-manifest.json",
+  "title": "RS-1 OTA Manifest",
+  "description": "OTA update trigger payload sent from cloud to device via MQTT",
+  "type": "object",
+  "required": ["version", "url", "sha256", "rollout_id", "issued_at"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$",
+      "description": "Target firmware version (semantic versioning)"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "HTTPS URL to signed firmware binary"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash of firmware binary (64 hex characters)"
+    },
+    "min_rssi": {
+      "type": "integer",
+      "minimum": -100,
+      "maximum": 0,
+      "default": -70,
+      "description": "Minimum Wi-Fi RSSI (dBm) required to proceed with update"
+    },
+    "rollout_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]+$",
+      "maxLength": 64,
+      "description": "Unique rollout identifier for tracking and correlation"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when trigger was issued"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when signed URL expires (optional)"
+    },
+    "force": {
+      "type": "boolean",
+      "default": false,
+      "description": "Bypass version check (use for critical security updates only)"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": "1.2.0",
+      "url": "https://fw.opticworks.io/rs1/1.2.0.bin?sig=abc123",
+      "sha256": "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd",
+      "min_rssi": -70,
+      "rollout_id": "2026-01-15-a",
+      "issued_at": "2026-01-15T10:00:00Z",
+      "expires_at": "2026-01-15T10:15:00Z"
+    }
+  ]
+}

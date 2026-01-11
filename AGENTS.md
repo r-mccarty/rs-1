@@ -24,13 +24,28 @@ rs-1/
 │
 └── docs/
     ├── PRD_RS1.md            # Product requirements
-    ├── PRODUCT_SPEC_RS1.md   # Product specification
-    ├── TECH_REQUIREMENTS_RS1.md
-    ├── VALIDATION_PLAN_RS1.md
+    ├── REQUIREMENTS_RS1.md   # Functional requirements
     │
-    ├── hardwareos/           # Firmware module specs
+    ├── firmware/             # Device firmware specs
     │   ├── README.md         # Architecture overview with diagrams
-    │   └── HARDWAREOS_MODULE_*.md  # Per-module specifications
+    │   ├── HARDWAREOS_MODULE_*.md  # Per-module specifications
+    │   ├── BOOT_SEQUENCE.md  # Module initialization order
+    │   ├── COORDINATE_SYSTEM.md  # Sensor coordinate system
+    │   ├── MEMORY_BUDGET.md  # Resource constraints
+    │   ├── DEGRADED_MODES.md # Failure handling
+    │   └── GLOSSARY.md       # Term definitions
+    │
+    ├── contracts/            # Firmware-cloud agreements
+    │   ├── PROTOCOL_MQTT.md  # MQTT topics and payloads
+    │   ├── SCHEMA_*.json     # JSON schemas
+    │   └── MOCK_BOUNDARIES.md  # Testing strategy
+    │
+    ├── testing/              # Test specifications
+    │   ├── INTEGRATION_TESTS.md  # Cross-module test scenarios
+    │   └── VALIDATION_PLAN_RS1.md  # Overall validation plan
+    │
+    ├── reviews/              # Architecture reviews
+    │   └── RFD_001_*.md      # Review documents
     │
     ├── references/           # Research docs
     └── archived/             # Historical docs
@@ -45,7 +60,7 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 | Module | File | Purpose |
 |--------|------|---------|
 | M01 | `HARDWAREOS_MODULE_RADAR_INGEST.md` | LD2450 UART parsing |
-| M02 | `HARDWAREOS_MODULE_TRACKING.md` | Multi-target tracking |
+| M02 | `HARDWAREOS_MODULE_TRACKING.md` | Multi-target Kalman tracking |
 | M03 | `HARDWAREOS_MODULE_ZONE_ENGINE.md` | Zone occupancy |
 | M04 | `HARDWAREOS_MODULE_PRESENCE_SMOOTHING.md` | Flicker reduction |
 | M05 | `HARDWAREOS_MODULE_NATIVE_API.md` | Home Assistant API |
@@ -70,7 +85,7 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 ### ESP32-C3-MINI-1
 - Architecture: RISC-V single-core, 160MHz
 - Flash: 4MB
-- SRAM: 400KB
+- SRAM: 400KB (200KB heap available)
 - Framework: ESP-IDF 5.x
 
 ### Home Assistant Integration
@@ -85,8 +100,9 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 
 ### Documentation
 - Each module has an **Assumptions** table - check these when requirements change
-- Architecture diagrams are in `docs/hardwareos/README.md`
+- Architecture diagrams are in `docs/firmware/README.md`
 - Reference docs in `docs/references/` contain research and competitor analysis
+- MQTT protocol is defined in `docs/contracts/PROTOCOL_MQTT.md`
 
 ### Code Style (When Firmware Exists)
 - Follow ESP-IDF coding conventions
@@ -96,7 +112,8 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 ### Testing
 - Unit tests should mock hardware dependencies
 - Integration tests use simulated radar data
-- See `VALIDATION_PLAN_RS1.md` for test requirements
+- See `docs/testing/VALIDATION_PLAN_RS1.md` for test requirements
+- See `docs/testing/INTEGRATION_TESTS.md` for cross-module scenarios
 
 ---
 
@@ -105,10 +122,10 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 ### Reading Module Specs
 ```bash
 # View all module specs
-ls docs/hardwareos/HARDWAREOS_MODULE_*.md
+ls docs/firmware/HARDWAREOS_MODULE_*.md
 
 # Read a specific module
-cat docs/hardwareos/HARDWAREOS_MODULE_TRACKING.md
+cat docs/firmware/HARDWAREOS_MODULE_TRACKING.md
 ```
 
 ### Updating Documentation
@@ -119,8 +136,9 @@ cat docs/hardwareos/HARDWAREOS_MODULE_TRACKING.md
 ### Adding New Features
 1. Check if feature fits existing module or needs new module
 2. Update relevant module spec first
-3. Update `docs/hardwareos/README.md` if architecture changes
-4. Implement feature following spec
+3. Update `docs/firmware/README.md` if architecture changes
+4. Update MQTT contract if cloud communication affected
+5. Implement feature following spec
 
 ---
 
@@ -135,6 +153,19 @@ These are critical assumptions. If any change, review affected modules:
 | Coordinate range | X ±6000mm, Y 0-6000mm | M01, M03 |
 | ESPHome API version | 1.9+ | M05 |
 | Occlusion duration | < 2 seconds typical | M04 |
+| Heap budget | 200KB available | All modules |
+
+---
+
+## Key Documents
+
+| Document | Purpose |
+|----------|---------|
+| `docs/firmware/GLOSSARY.md` | Canonical term definitions |
+| `docs/firmware/COORDINATE_SYSTEM.md` | Sensor coordinate system |
+| `docs/firmware/MEMORY_BUDGET.md` | Resource constraints |
+| `docs/firmware/BOOT_SEQUENCE.md` | Module initialization |
+| `docs/contracts/PROTOCOL_MQTT.md` | Cloud communication |
 
 ---
 

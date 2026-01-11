@@ -1,7 +1,7 @@
 # HardwareOS Presence Smoothing Module Specification (M04)
 
-Version: 0.1
-Date: 2026-01-XX
+Version: 0.2
+Date: 2026-01-09
 Owner: OpticWorks Firmware
 Status: Draft
 
@@ -15,7 +15,7 @@ Apply hysteresis, hold timers, and confidence-based smoothing to raw zone occupa
 
 | ID | Assumption | Impact if Changed |
 |----|------------|-------------------|
-| A1 | Frame rate from M03 is ~10 Hz (after throttling) | Timer granularity, hold time precision |
+| A1 | Frame rate from M03 is **33 Hz** (radar frame rate) | Timer granularity, hold time precision |
 | A2 | Occlusions typically last < 2 seconds | Default hold time selection |
 | A3 | Users prefer false occupancy over false vacancy | Bias toward longer holds |
 | A4 | Sensitivity is exposed as a single slider (0-100) | Parameter mapping complexity |
@@ -240,3 +240,12 @@ On zone sensitivity update:
 - Should sensitivity be per-zone or global only for MVP?
 - Optimal default hold time based on real-world occlusion data.
 - Should "moving" vs "stationary" targets have different hold times?
+
+---
+
+## 15. Document History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-01-XX | OpticWorks | Initial draft |
+| 0.2 | 2026-01-09 | OpticWorks | Corrected frame rate assumption from 10 Hz to 33 Hz (RFD-001 issue C1) |

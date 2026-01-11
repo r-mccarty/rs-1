@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opticworks.io/schemas/zone-config.json",
+  "title": "RS-1 Zone Configuration",
+  "description": "Zone configuration schema for RS-1 presence sensor devices. Coordinates are in millimeters.",
+  "type": "object",
+  "required": ["version", "updated_at", "zones"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Configuration version number (monotonically increasing)"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last update"
+    },
+    "zones": {
+      "type": "array",
+      "maxItems": 16,
+      "description": "Array of zone definitions (max 16)",
+      "items": {
+        "$ref": "#/$defs/zone"
+      }
+    }
+  },
+  "$defs": {
+    "zone": {
+      "type": "object",
+      "required": ["id", "name", "type", "vertices", "sensitivity"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{1,16}$",
+          "description": "Zone identifier (lowercase alphanumeric + underscore, max 16 chars)"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Human-readable display name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["include", "exclude"],
+          "description": "Zone type: include (presence counted) or exclude (ignored)"
+        },
+        "vertices": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 8,
+          "description": "Polygon vertices as [x, y] pairs in millimeters",
+          "items": {
+            "type": "array",
+            "items": [
+              {
+                "type": "integer",
+                "minimum": -6000,
+                "maximum": 6000,
+                "description": "X coordinate in mm"
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6000,
+                "description": "Y coordinate in mm"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        "sensitivity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Sensitivity setting (0=stable, 100=responsive). See GLOSSARY.md."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": 3,
+      "updated_at": "2026-01-15T12:00:00Z",
+      "zones": [
+        {
+          "id": "zone_living",
+          "name": "Living Room",
+          "type": "include",
+          "vertices": [[200, 400], [2000, 400], [2000, 3000], [200, 3000]],
+          "sensitivity": 50
+        },
+        {
+          "id": "zone_window",
+          "name": "Window Area",
+          "type": "exclude",
+          "vertices": [[1800, 0], [2200, 0], [2200, 500], [1800, 500]],
+          "sensitivity": 50
+        }
+      ]
+    }
+  ]
+}

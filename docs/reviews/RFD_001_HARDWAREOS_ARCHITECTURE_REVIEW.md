@@ -31,10 +31,12 @@ This RFD documents a critical systems engineering review of the HardwareOS firmw
 ## 1. Review Scope
 
 Reviewed documents:
-- `docs/hardwareos/README.md` (Architecture Overview)
-- `docs/hardwareos/HARDWAREOS_MODULE_*.md` (11 modules)
+- `docs/firmware/README.md` (Architecture Overview)
+- `docs/firmware/HARDWAREOS_MODULE_*.md` (11 modules)
 - `docs/PRD_RS1.md` (Product Requirements)
 - `docs/TECH_REQUIREMENTS_RS1.md` (Technical Requirements)
+
+**Note:** Documentation was restructured after this review. `hardwareos/` is now `firmware/`.
 
 Review criteria:
 - Internal consistency across modules
@@ -318,7 +320,7 @@ No specification defines:
 - Native API starts before Wi-Fi connects
 - OTA Manager queries version before Security initializes
 
-**Required Fix:** Add `docs/hardwareos/BOOT_SEQUENCE.md` with:
+**Required Fix:** Add `docs/firmware/BOOT_SEQUENCE.md` with:
 - Initialization DAG
 - Timeout handling per stage
 - Fallback behavior

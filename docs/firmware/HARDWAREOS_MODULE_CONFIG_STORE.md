@@ -1,7 +1,7 @@
 # HardwareOS Device Config Store Module Specification (M06)
 
-Version: 0.1
-Date: 2026-01-XX
+Version: 0.2
+Date: 2026-01-09
 Owner: OpticWorks Firmware
 Status: Draft
 
@@ -18,7 +18,7 @@ Provide persistent, atomic, and versioned storage for device configuration inclu
 | A1 | ESP-IDF NVS library is the storage backend | API surface, wear leveling |
 | A2 | ESP32-C3 has 4MB flash with ~16KB NVS partition | Storage limits |
 | A3 | Zone config is < 4KB total | Single NVS blob vs chunking |
-| A4 | Config updates are infrequent (< 10/day) | Flash wear considerations |
+| A4 | Config updates are infrequent (< 10/day); NVS commits only on actual changes | Flash wear (~100K cycles = 27 years at 10/day) |
 | A5 | Atomic updates are required (no partial writes) | Transaction implementation |
 | A6 | Config versioning enables rollback | Version schema |
 | A7 | Factory reset clears all config | Reset behavior |
@@ -176,9 +176,48 @@ esp_err_t config_erase(const char *key);
 esp_err_t config_get_stats(config_stats_t *stats);
 ```
 
-## 5. Atomic Writes
+## 5. NVS Commit Policy
 
-### 5.1 Transaction Flow
+**Critical:** NVS commits MUST only occur on actual configuration changes. Never use automatic periodic commits.
+
+### 5.1 Flash Wear Analysis
+
+| Commit Strategy | Commits/Day | Flash Lifetime |
+|-----------------|-------------|----------------|
+| Periodic (60s) | 1,440 | **69 days** (unacceptable) |
+| Periodic (1hr) | 24 | 11.4 years |
+| On-change only | < 10 | **27+ years** (target) |
+
+### 5.2 Commit Triggers
+
+NVS is committed only when:
+- User saves zone configuration (via M11)
+- User changes device settings
+- Network credentials are updated
+- OTA completes successfully
+- Factory reset is initiated
+
+### 5.3 Commit-on-Change Implementation
+
+```c
+// CORRECT: Commit only after actual write
+esp_err_t config_set_zones(const zone_store_t *zones) {
+    // ... validation and write ...
+    nvs_commit(nvs_handle);  // Commit immediately after change
+    return ESP_OK;
+}
+
+// INCORRECT: Never do periodic commits
+// void nvs_periodic_commit(void) {  // DO NOT IMPLEMENT
+//     nvs_commit(nvs_handle);
+// }
+```
+
+---
+
+## 6. Atomic Writes
+
+### 6.1 Transaction Flow
 
 ```
 1. Validate incoming config (schema, bounds, checksum)
@@ -367,3 +406,12 @@ typedef enum {
 - Should we support multiple rollback levels (>1 previous)?
 - Cloud backup/restore of zone configuration?
 - Migration path when schema changes between firmware versions?
+
+---
+
+## 17. Document History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-01-XX | OpticWorks | Initial draft |
+| 0.2 | 2026-01-09 | OpticWorks | Added NVS commit policy section, clarified assumption A4. Addresses RFD-001 issue C5 (NVS wear). |

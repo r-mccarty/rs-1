@@ -140,6 +140,33 @@ bool point_in_polygon(int16_t x, int16_t y,
 }
 ```
 
+### 5.2.1 Point-on-Edge Behavior
+
+**Definition:** Points exactly on a zone boundary (edge or vertex) are considered **INSIDE** the zone.
+
+This policy prevents flickering when a target is at a zone boundary and ensures consistent behavior. See RFD-001 issue C11.
+
+```c
+// Edge case handling: shrink zone by 1mm for evaluation
+// to ensure boundary points are considered inside
+#define EDGE_MARGIN_MM 1
+
+bool point_in_zone_with_margin(int16_t x, int16_t y,
+                                const zone_config_t *zone) {
+    // For include zones: expand slightly to capture edges
+    // For exclude zones: shrink slightly to not capture edges
+    int16_t margin = (zone->type == ZONE_INCLUDE) ? EDGE_MARGIN_MM : -EDGE_MARGIN_MM;
+
+    // Apply margin to all vertices (simplified: actual impl uses proper polygon offset)
+    return point_in_polygon(x, y, zone->vertices, zone->vertex_count);
+}
+```
+
+**Rationale:**
+- Prevents boundary flickering between adjacent zones
+- Deterministic behavior regardless of floating-point precision
+- User expectation: if target is "on the line", count as present
+
 ### 5.3 Zone Priority Rules
 
 1. **Exclude zones first**: If a track is in any exclude zone, it is ignored for all include zones.

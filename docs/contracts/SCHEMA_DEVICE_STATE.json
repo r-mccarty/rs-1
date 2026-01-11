@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opticworks.io/schemas/device-state.json",
+  "title": "RS-1 Device State",
+  "description": "Device state payload published to retained MQTT topic. Used for online/offline status and device registry.",
+  "type": "object",
+  "required": ["online", "firmware_version", "last_seen"],
+  "properties": {
+    "online": {
+      "type": "boolean",
+      "description": "Device connectivity status. Set to false by LWT on disconnect."
+    },
+    "firmware_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$",
+      "description": "Current firmware version (semantic versioning)"
+    },
+    "protocol_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "default": "1.0",
+      "description": "MQTT protocol version supported by device"
+    },
+    "uptime_sec": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Device uptime in seconds"
+    },
+    "wifi_rssi": {
+      "type": "integer",
+      "minimum": -100,
+      "maximum": 0,
+      "description": "Wi-Fi signal strength in dBm"
+    },
+    "last_seen": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last state update"
+    },
+    "config_version": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Current zone configuration version"
+    },
+    "zone_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16,
+      "description": "Number of configured zones"
+    },
+    "radar_connected": {
+      "type": "boolean",
+      "description": "LD2450 radar sensor connection status"
+    },
+    "boot_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total device boot count since manufacture"
+    },
+    "reset_reason": {
+      "type": "string",
+      "enum": ["power_on", "software", "watchdog", "brownout", "panic", "unknown"],
+      "description": "Reason for last device reset"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "online": true,
+      "firmware_version": "1.2.0",
+      "protocol_version": "1.0",
+      "uptime_sec": 86400,
+      "wifi_rssi": -55,
+      "last_seen": "2026-01-15T10:00:00Z",
+      "config_version": 3,
+      "zone_count": 4,
+      "radar_connected": true,
+      "boot_count": 42,
+      "reset_reason": "power_on"
+    },
+    {
+      "online": false,
+      "firmware_version": "1.2.0",
+      "last_seen": "2026-01-15T09:55:00Z"
+    }
+  ]
+}

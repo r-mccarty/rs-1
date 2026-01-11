@@ -210,8 +210,32 @@ TXT Records:
 | `api_port` | uint16 | 6053 | TCP port for API |
 | `api_password` | string | "" | Legacy password (optional) |
 | `encryption_key` | bytes[32] | random | Noise PSK |
-| `reboot_timeout_ms` | uint32 | 900000 | Reboot if no connection (15 min) |
+| `reboot_timeout_ms` | uint32 | 0 | Reboot if no connection (0 = disabled) |
 | `state_throttle_ms` | uint16 | 100 | Min interval between state updates |
+
+### 10.1 Reboot Timeout Behavior
+
+**Default: Disabled (0)**
+
+The `reboot_timeout_ms` parameter controls automatic device reboot when no Home Assistant connection is established. This is **disabled by default** to prevent infinite reboot loops.
+
+**Why disabled by default:**
+- Devices may operate without Home Assistant (standalone mode)
+- First-time setup has no HA connection until user configures
+- Network issues should not cause continuous reboots
+- See RFD-001 issue C12
+
+**When to enable:**
+```c
+// Only enable after HA is successfully configured and connection verified
+config.reboot_timeout_ms = 900000;  // 15 minutes
+```
+
+**Behavior when enabled:**
+- Timer starts on boot
+- Timer resets on successful HA connection
+- If timer expires without connection → system reboot
+- Log warning at 50% and 90% of timeout
 
 ## 11. Performance Requirements
 
@@ -286,3 +310,12 @@ These can be exposed via a separate debug interface if needed.
 - Support multiple simultaneous HA connections?
 - Expose firmware update progress as sensor?
 - Add "last motion" timestamp sensor for zones?
+
+---
+
+## 18. Document History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-01-XX | OpticWorks | Initial draft |
+| 0.2 | 2026-01-09 | OpticWorks | Disabled reboot_timeout_ms by default (0) to prevent infinite reboot loops when HA is not configured. Added section 10.1. Addresses RFD-001 issue C12. |
