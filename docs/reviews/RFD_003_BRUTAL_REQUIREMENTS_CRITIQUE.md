@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-I've reviewed every document in this repo. The structure is pretty, the diagrams are nice, and the ASCII art is adorable. But this thing has **40+ issues** that will bite you in production. Some are "bricked devices in the field" bad. Some are "customer calls at 3am because their lights won't turn off" bad.
+I've reviewed every document in this repo. The structure is pretty, the diagrams are nice, and the ASCII art is adorable. But this thing has **41 issues** that will bite you in production. Some are "bricked devices in the field" bad. Some are "customer calls at 3am because their lights won't turn off" bad.
 
 **My recommendation:** Do NOT write a single line of firmware until Sections 2-4 are resolved.
 
@@ -226,7 +226,36 @@ If nobody enforces it, device publishes 33 msg/sec (one per frame). Cloud can't 
 
 ---
 
-### 2.5 Wi-Fi Reconnection Will Frustrate Users
+### 2.5 Telemetry Contract is Schizophrenic
+
+**Files:** `PROTOCOL_MQTT.md:65-70`, `SCHEMA_TELEMETRY.json`, `SERVICE_TELEMETRY.md:59-96`
+
+Your MQTT contract and your cloud service don't agree on what telemetry looks like:
+
+**MQTT Contract says:**
+- Single topic: `telemetry`
+- Payload has `device_id`, `metrics`, standard schema
+
+**Cloud Service says:**
+- Per-category topics
+- Different payload shapes
+- No `device_id` in payload (inferred from topic?)
+- No `metrics` wrapper
+
+**The contract topic namespace expects:**
+```
+{category}/{action}
+```
+
+But your telemetry topic catalog just lists `telemetry` with no action. So is it `telemetry/heartbeat`? `telemetry/log`? Just `telemetry`?
+
+**What will happen:** Firmware team implements against PROTOCOL_MQTT.md. Cloud team implements against SERVICE_TELEMETRY.md. They meet in integration testing. Nothing works. Fingers point. Schedule slips.
+
+**Fix:** One source of truth. Either update the contract to match the service, or update the service to match the contract. Then delete the other.
+
+---
+
+### 2.6 Wi-Fi Reconnection Will Frustrate Users
 
 **File:** `DEGRADED_MODES.md:70-85`
 
@@ -251,7 +280,7 @@ What happens when Wi-Fi is flaky?
 
 ---
 
-### 2.6 Mobile App vs Web App: Pick One
+### 2.7 Mobile App vs Web App: Pick One
 
 **Files:** `REQUIREMENTS_RS1.md:129-156`, `firmware/README.md:51-55`
 
@@ -398,6 +427,7 @@ Total: ~2 days of work to avoid months of production issues.
 - [ ] **Edge Handling:** Implement 1mm zone shrink, not just document it
 - [ ] **Track States:** Document which states M03 receives from M02
 - [ ] **MQTT Rate Limits:** Define enforcement point
+- [ ] **Telemetry Contract:** Align PROTOCOL_MQTT.md with SERVICE_TELEMETRY.md (pick one source of truth)
 - [ ] **Wi-Fi Backoff:** Add stable connection reset
 
 ### Nice to Have (Before GA)
@@ -420,50 +450,51 @@ Total: ~2 days of work to avoid months of production issues.
 4. Anti-rollback eFuse limit (32) - REQUIREMENTS_RS1.md:269
 5. NVS wear not enforced - MEMORY_BUDGET.md:209-221
 
-### Major (10)
+### Major (11)
 6. Kalman filter no error recovery - HARDWAREOS_MODULE_TRACKING.md
 7. Point-in-polygon edge cases - HARDWAREOS_MODULE_ZONE_ENGINE.md:126-150
 8. Confirmed track visibility undefined - HARDWAREOS_MODULE_ZONE_ENGINE.md:23,39
 9. Sensitivity formula mismatch - GLOSSARY.md:121-125 vs PRESENCE_SMOOTHING.md
 10. MQTT rate limits unenforceable - PROTOCOL_MQTT.md:361-366
-11. Wi-Fi backoff unbounded - DEGRADED_MODES.md:70-85
-12. Multi-connection API undefined - HARDWAREOS_MODULE_NATIVE_API.md:24-26
-13. Safe mode recovery undocumented - BOOT_SEQUENCE.md:280-287
-14. NVS corruption loses Wi-Fi - DEGRADED_MODES.md:293-305
-15. OTA cooldown storage undefined - HARDWAREOS_MODULE_OTA.md:98
+11. Telemetry contract mismatch - PROTOCOL_MQTT.md:65-70 vs SERVICE_TELEMETRY.md:59-96
+12. Wi-Fi backoff unbounded - DEGRADED_MODES.md:70-85
+13. Multi-connection API undefined - HARDWAREOS_MODULE_NATIVE_API.md:24-26
+14. Safe mode recovery undocumented - BOOT_SEQUENCE.md:280-287
+15. NVS corruption loses Wi-Fi - DEGRADED_MODES.md:293-305
+16. OTA cooldown storage undefined - HARDWAREOS_MODULE_OTA.md:98
 
 ### Significant (10)
-16. Telemetry opt-in mechanism missing - REQUIREMENTS_RS1.md:192-199
-17. LD2450 frame sync recovery missing - HARDWAREOS_MODULE_RADAR_INGEST.md:113-121
-18. Track retirement criteria missing - HARDWAREOS_MODULE_TRACKING.md
-19. Zone evaluation load assumed - REQUIREMENTS_RS1.md:74
-20. mDNS discovery collision - HARDWAREOS_MODULE_NATIVE_API.md
-21. Config downgrade not handled - HARDWAREOS_MODULE_CONFIG_STORE.md:43-49
-22. Noise PSK management undefined - HARDWAREOS_MODULE_SECURITY.md
-23. Zone editor no auth - HARDWAREOS_MODULE_ZONE_EDITOR.md
-24. Kalman tuning parameters undefined - HARDWAREOS_MODULE_TRACKING.md
-25. Signature block verification order - HARDWAREOS_MODULE_SECURITY.md:98-109
+17. Telemetry opt-in mechanism missing - REQUIREMENTS_RS1.md:192-199
+18. LD2450 frame sync recovery missing - HARDWAREOS_MODULE_RADAR_INGEST.md:113-121
+19. Track retirement criteria missing - HARDWAREOS_MODULE_TRACKING.md
+20. Zone evaluation load assumed - REQUIREMENTS_RS1.md:74
+21. mDNS discovery collision - HARDWAREOS_MODULE_NATIVE_API.md
+22. Config downgrade not handled - HARDWAREOS_MODULE_CONFIG_STORE.md:43-49
+23. Noise PSK management undefined - HARDWAREOS_MODULE_SECURITY.md
+24. Zone editor no auth - HARDWAREOS_MODULE_ZONE_EDITOR.md
+25. Kalman tuning parameters undefined - HARDWAREOS_MODULE_TRACKING.md
+26. Signature block verification order - HARDWAREOS_MODULE_SECURITY.md:98-109
 
 ### Documentation (6)
-26. Assumptions staleness not enforced - All module specs
-27. RFD-001 not linked - Throughout docs
-28. No API stability guarantee - HARDWAREOS_MODULE_NATIVE_API.md:18-27
-29. Test plan lacks coverage metrics - VALIDATION_PLAN_RS1.md
-30. Integration test framework unspecified - INTEGRATION_TESTS.md
-31. Ground truth sensor not named - VALIDATION_PLAN_RS1.md
+27. Assumptions staleness not enforced - All module specs
+28. RFD-001 not linked - Throughout docs
+29. No API stability guarantee - HARDWAREOS_MODULE_NATIVE_API.md:18-27
+30. Test plan lacks coverage metrics - VALIDATION_PLAN_RS1.md
+31. Integration test framework unspecified - INTEGRATION_TESTS.md
+32. Ground truth sensor not named - VALIDATION_PLAN_RS1.md
 
 ### Contradictions (5)
-32. Unlimited zones vs 16 cap - REQUIREMENTS_RS1.md:75 vs SCHEMA_ZONE_CONFIG.json:19-23
-33. <50ms vs 100ms latency - REQUIREMENTS_RS1.md:218 vs firmware/README.md:64
-34. Mobile app vs web MVP - REQUIREMENTS_RS1.md:129-156 vs firmware/README.md:51-55
-35. Telemetry privacy vs target stream - REQUIREMENTS_RS1.md:192-199 vs PROTOCOL_MQTT.md:85-89
-36. Sensitivity table vs formula - Multiple files
+33. Unlimited zones vs 16 cap - REQUIREMENTS_RS1.md:75 vs SCHEMA_ZONE_CONFIG.json:19-23
+34. <50ms vs 100ms latency - REQUIREMENTS_RS1.md:218 vs firmware/README.md:64
+35. Mobile app vs web MVP - REQUIREMENTS_RS1.md:129-156 vs firmware/README.md:51-55
+36. Telemetry privacy vs target stream - REQUIREMENTS_RS1.md:192-199 vs PROTOCOL_MQTT.md:85-89
+37. Sensitivity table vs formula - Multiple files
 
 ### Missing (4)
-37. Device naming collision resolution
-38. Zone migration strategy
-39. Factory reset procedure
-40. OTA RSSI re-check during download
+38. Device naming collision resolution
+39. Zone migration strategy
+40. Factory reset procedure
+41. OTA RSSI re-check during download
 
 </details>
 
