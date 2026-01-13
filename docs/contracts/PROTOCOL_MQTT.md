@@ -94,6 +94,15 @@ opticworks/{device_id}/{category}/{action}
 |-------|-----------|-----|--------|---------|
 | `opticworks/{device_id}/state` | Device → Cloud | 1 | Yes | Online/offline, firmware version |
 
+### 4.7 Provisioning Topics
+
+| Topic | Direction | QoS | Retain | Purpose |
+|-------|-----------|-----|--------|---------|
+| `opticworks/{device_id}/provision` | Device → Cloud | 1 | No | Device registration request |
+| `opticworks/{device_id}/provision/response` | Cloud → Device | 1 | No | Registration result |
+
+See `PROTOCOL_PROVISIONING.md` for complete provisioning flow.
+
 ---
 
 ## 5. Message Schemas
@@ -308,6 +317,57 @@ See: `SCHEMA_DEVICE_STATE.json`
 }
 ```
 
+### 5.10 Provisioning Request (Device → Cloud)
+
+```json
+{
+  "device_id": "a1b2c3d4e5f6",
+  "mac_address": "AA:BB:CC:D4:E5:F6",
+  "firmware_version": "1.0.0",
+  "user_token": "eyJhbGciOiJIUzI1NiIs...",
+  "timestamp": "2026-01-13T10:00:00Z"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `device_id` | string | Yes | 12-char hex device identifier |
+| `mac_address` | string | Yes | Full MAC address (AA:BB:CC:DD:EE:FF) |
+| `firmware_version` | string | Yes | Current firmware version (semver) |
+| `user_token` | string | No | JWT from app for automatic claiming |
+| `timestamp` | string | Yes | ISO 8601 timestamp |
+
+### 5.11 Provisioning Response (Cloud → Device)
+
+**Success:**
+```json
+{
+  "status": "registered",
+  "device_id": "a1b2c3d4e5f6",
+  "claimed_by": "user_abc123",
+  "timestamp": "2026-01-13T10:00:01Z"
+}
+```
+
+**Failure:**
+```json
+{
+  "status": "rejected",
+  "error": "invalid_token",
+  "message": "User token expired or invalid",
+  "timestamp": "2026-01-13T10:00:01Z"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | enum | Yes | `registered`, `rejected` |
+| `device_id` | string | Yes | Device identifier |
+| `claimed_by` | string | No | User ID if claimed (null if unclaimed) |
+| `error` | string | No | Error code if rejected |
+| `message` | string | No | Human-readable error message |
+| `timestamp` | string | Yes | ISO 8601 timestamp |
+
 ---
 
 ## 6. QoS and Retention Policy
@@ -322,6 +382,7 @@ See: `SCHEMA_DEVICE_STATE.json`
 | Config status | 1 | Yes | Latest status queryable |
 | Target stream | 0 | No | Real-time, loss acceptable |
 | Device state | 1 | Yes | LWT and status queryable |
+| Provisioning | 1 | No | Must be delivered, one-time |
 
 ---
 
@@ -398,6 +459,7 @@ Cloud services MUST support protocol versions for at least 2 major firmware vers
 
 | Document | Purpose |
 |----------|---------|
+| `PROTOCOL_PROVISIONING.md` | Complete provisioning protocol |
 | `SCHEMA_ZONE_CONFIG.json` | JSON Schema for zone configuration |
 | `SCHEMA_OTA_MANIFEST.json` | JSON Schema for OTA triggers |
 | `SCHEMA_TELEMETRY.json` | JSON Schema for telemetry payloads |

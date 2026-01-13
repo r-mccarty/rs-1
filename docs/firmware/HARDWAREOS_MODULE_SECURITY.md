@@ -256,16 +256,98 @@ void security_generate_mqtt_password(device_identity_t *id, uint32_t timestamp) 
 }
 ```
 
-## 8. API Security
+## 8. Provisioning Security
 
-### 8.1 Native API (ESPHome Compatible)
+### 8.1 AP Mode Security
+
+When the device operates in provisioning AP mode, special security considerations apply:
+
+```c
+typedef struct {
+    char ap_ssid[32];           // "OpticWorks-XXXX"
+    bool ap_open;               // true (no password)
+    uint32_t ap_timeout_sec;    // 600 (10 minutes)
+    bool captive_portal;        // true
+} provisioning_ap_config_t;
+```
+
+**Security decisions:**
+
+| Risk | Decision | Rationale |
+|------|----------|-----------|
+| Open AP | Accept | Reduces setup friction; no sensitive data on AP network |
+| Password exposure | Mitigate | WiFi password only stored after successful connection |
+| Rogue provisioning | Accept | Requires physical access to see QR code |
+| Man-in-middle | Mitigate | User token validated server-side over TLS |
+
+### 8.2 Provisioning API Security
+
+The local provisioning API (`192.168.4.1`) has limited exposure:
+
+```c
+typedef struct {
+    bool allow_device_info;     // true - public info only
+    bool allow_network_scan;    // true - user-initiated
+    bool allow_provision;       // true - requires full payload
+    bool require_https;         // false - local network only
+} provisioning_api_config_t;
+```
+
+**API exposure:**
+
+| Endpoint | Authentication | Rate Limit |
+|----------|---------------|------------|
+| `GET /api/device-info` | None | 10/min |
+| `GET /api/networks` | None | 2/min |
+| `POST /api/provision` | None | 3/min |
+| `GET /api/provision/status` | None | 60/min |
+| `WS /api/provision/ws` | None | 1 connection |
+
+### 8.3 User Token Handling
+
+User tokens from the mobile app are handled securely:
+
+```c
+// Token is NOT stored on device - passed through to cloud
+typedef struct {
+    bool has_user_token;
+    uint8_t token_hash[32];     // For logging only (not stored)
+} provisioning_session_t;
+
+// Token transmitted directly to cloud via MQTT (TLS)
+void provisioning_send_registration(const char *user_token) {
+    // Token included in MQTT payload, validated server-side
+    // Device does not validate or store the token
+}
+```
+
+### 8.4 Credential Storage Timing
+
+WiFi credentials are stored only after full provisioning success:
+
+```c
+typedef enum {
+    PROV_CRED_PENDING,      // Received but not stored
+    PROV_CRED_VALIDATED,    // WiFi connected successfully
+    PROV_CRED_COMMITTED,    // Stored in NVS after cloud registration
+} provisioning_cred_state_t;
+
+// Credentials only committed after cloud registration
+// If cloud fails, device can still save for local-only mode
+```
+
+---
+
+## 9. API Security
+
+### 9.1 Native API (ESPHome Compatible)
 
 | Method | Security |
 |--------|----------|
 | Password | Simple password in ConnectRequest |
 | Noise | Noise_NNpsk0 with PSK |
 
-### 8.2 Noise Protocol Implementation
+### 9.2 Noise Protocol Implementation
 
 ```c
 typedef struct {
@@ -282,7 +364,7 @@ esp_err_t security_noise_encrypt(noise_session_t *session, const uint8_t *plaint
 esp_err_t security_noise_decrypt(noise_session_t *session, const uint8_t *ciphertext, size_t len, uint8_t *plaintext);
 ```
 
-### 8.3 Local Pairing
+### 9.3 Local Pairing
 
 Device pairing for zone editor and local API:
 
@@ -320,9 +402,9 @@ bool security_session_valid(const uint8_t *token);
 6. After 1 hour, session expires, user must re-pair
 ```
 
-## 9. Key Management
+## 10. Key Management
 
-### 9.1 Key Types
+### 10.1 Key Types
 
 | Key | Storage | Purpose |
 |-----|---------|---------|
@@ -333,7 +415,7 @@ bool security_session_valid(const uint8_t *token);
 | API PSK | NVS (encrypted) | API encryption |
 | Pairing token | RAM | Local pairing |
 
-### 9.2 Key Rotation
+### 10.2 Key Rotation
 
 | Key | Rotation Method | Frequency |
 |-----|-----------------|-----------|
@@ -341,16 +423,16 @@ bool security_session_valid(const uint8_t *token);
 | Device secret | Provisioning or support | Rare |
 | API PSK | User-initiated or OTA | As needed |
 
-### 9.3 Key Provisioning
+### 10.3 Key Provisioning
 
 Manufacturing provisioning:
 1. Generate device secret on secure workstation.
 2. Write to NVS via serial during manufacture.
 3. Register device_id and secret_hash in cloud database.
 
-## 10. Anti-Rollback
+## 11. Anti-Rollback
 
-### 10.1 Version Tracking
+### 11.1 Version Tracking
 
 ```c
 // Stored in eFuse (one-way counter)
@@ -363,7 +445,7 @@ typedef struct {
 // On OTA: reject if new.security_version < current.security_version
 ```
 
-### 10.2 eFuse Counter
+### 11.2 eFuse Counter
 
 ESP32-C3 provides 32 bits for anti-rollback. Each security update burns one bit:
 
@@ -376,7 +458,7 @@ if (new_security_version <= current_version) {
 esp_efuse_write_field_cnt(ESP_EFUSE_SECURE_VERSION, new_security_version);
 ```
 
-## 11. Configuration Parameters
+## 12. Configuration Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -386,10 +468,12 @@ esp_efuse_write_field_cnt(ESP_EFUSE_SECURE_VERSION, new_security_version);
 | `api_encryption_required` | bool | true | Require Noise for API |
 | `pairing_code_timeout_sec` | uint16 | 300 | Pairing code validity (5 min) |
 | `session_token_timeout_sec` | uint32 | 3600 | Session token validity (1 hour) |
+| `ap_mode_timeout_sec` | uint32 | 600 | AP mode timeout (10 min) |
+| `provision_rate_limit` | uint8 | 3 | Max provisioning attempts per minute |
 
-## 12. Security Events
+## 13. Security Events
 
-### 12.1 Logged Events
+### 13.1 Logged Events
 
 | Event | Severity | Description |
 |-------|----------|-------------|
@@ -398,36 +482,44 @@ esp_efuse_write_field_cnt(ESP_EFUSE_SECURE_VERSION, new_security_version);
 | `SEC_AUTH_FAILED` | Warning | API auth failure |
 | `SEC_PAIRING_ATTEMPT` | Info | Pairing code entered |
 | `SEC_ROLLBACK_BLOCKED` | Error | Downgrade attempt blocked |
+| `SEC_PROVISION_START` | Info | Provisioning AP mode started |
+| `SEC_PROVISION_SUCCESS` | Info | Device provisioned successfully |
+| `SEC_PROVISION_FAILED` | Warning | Provisioning failed |
 
-### 12.2 Telemetry (M09)
+### 13.2 Telemetry (M09)
 
 | Metric | Type | Description |
 |--------|------|-------------|
 | `security.auth_failures` | Counter | Failed authentications |
 | `security.pairing_attempts` | Counter | Pairing attempts |
 | `security.tls_handshakes` | Counter | TLS connections |
+| `security.provision_attempts` | Counter | Provisioning attempts |
+| `security.provision_success` | Counter | Successful provisioning |
 
-## 13. Testing Strategy
+## 14. Testing Strategy
 
-### 13.1 Unit Tests
+### 14.1 Unit Tests
 
 - Signature verification with valid/invalid signatures.
 - Key derivation consistency.
 - Noise protocol handshake.
+- Provisioning state machine transitions.
 
-### 13.2 Integration Tests
+### 14.2 Integration Tests
 
 - OTA with signed/unsigned firmware.
 - TLS connection to test server.
 - API authentication flow.
+- Full provisioning flow (AP mode → WiFi → cloud).
 
-### 13.3 Security Tests
+### 14.3 Security Tests
 
 - Attempt rollback to older firmware.
 - Attempt connection with invalid certificate.
 - Fuzz API authentication.
+- Provisioning rate limit enforcement.
 
-## 14. Dependencies
+## 15. Dependencies
 
 | Dependency | Version | Purpose |
 |------------|---------|---------|
@@ -435,9 +527,17 @@ esp_efuse_write_field_cnt(ESP_EFUSE_SECURE_VERSION, new_security_version);
 | ESP-IDF Secure Boot | 5.x | Boot chain |
 | Noise-C | latest | API encryption |
 
-## 15. Open Questions
+## 16. Open Questions
 
 - Flash encryption for production (performance impact)?
 - Hardware key storage options for future revision?
 - Certificate rotation strategy for long-lived devices?
 - Remote key revocation mechanism?
+
+## 17. References
+
+| Document | Purpose |
+|----------|---------|
+| `../contracts/PROTOCOL_PROVISIONING.md` | Complete provisioning protocol |
+| `../contracts/PROTOCOL_MQTT.md` | MQTT authentication details |
+| `HARDWAREOS_MODULE_CONFIG_STORE.md` | Credential storage |

@@ -149,6 +149,116 @@ async function handleFirstConnection(deviceId: string, payload: DeviceState): Pr
 }
 ```
 
+### 4.3 Provisioning Registration
+
+Devices register via MQTT after WiFi provisioning. See `../contracts/PROTOCOL_PROVISIONING.md`.
+
+```typescript
+// MQTT handler for opticworks/{device_id}/provision
+async function handleProvisioningRequest(message: MQTTMessage): Promise<void> {
+  const deviceId = extractDeviceId(message.topic);
+  const request: ProvisioningRequest = JSON.parse(message.payload);
+
+  // Validate request
+  if (request.device_id !== deviceId) {
+    await publishProvisioningResponse(deviceId, {
+      status: 'rejected',
+      error: 'device_id_mismatch',
+      message: 'Device ID in payload does not match topic',
+      timestamp: new Date().toISOString()
+    });
+    return;
+  }
+
+  // Register or update device
+  await db.execute(`
+    INSERT INTO devices (device_id, mac_address, firmware_version, created_at, first_seen, provisioned_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (device_id) DO UPDATE SET
+      firmware_version = ?,
+      provisioned_at = ?
+  `, [
+    deviceId,
+    request.mac_address,
+    request.firmware_version,
+    new Date(),
+    new Date(),
+    new Date(),
+    request.firmware_version,
+    new Date()
+  ]);
+
+  // Handle user token for automatic claiming
+  let claimedBy: string | null = null;
+  if (request.user_token) {
+    const tokenPayload = await validateProvisioningToken(request.user_token);
+    if (tokenPayload) {
+      await claimDeviceForUser(deviceId, tokenPayload.sub);
+      claimedBy = tokenPayload.sub;
+
+      // Notify user via push notification / WebSocket
+      await notifyUser(tokenPayload.sub, {
+        type: 'device_provisioned',
+        device_id: deviceId,
+        message: 'RS-1 connected successfully!'
+      });
+    }
+  }
+
+  // Send success response
+  await publishProvisioningResponse(deviceId, {
+    status: 'registered',
+    device_id: deviceId,
+    claimed_by: claimedBy,
+    timestamp: new Date().toISOString()
+  });
+
+  // Log audit event
+  await logAuditEvent(deviceId, 'provisioned', {
+    firmware_version: request.firmware_version,
+    claimed_by: claimedBy
+  });
+}
+```
+
+### 4.4 Token Validation
+
+```typescript
+async function validateProvisioningToken(token: string): Promise<TokenPayload | null> {
+  try {
+    const payload = await jwt.verify(token, publicKey, {
+      issuer: 'https://auth.opticworks.io',
+      algorithms: ['RS256']
+    });
+
+    // Check scope
+    if (!payload.scope?.includes('device:provision')) {
+      return null;
+    }
+
+    return payload;
+  } catch (e) {
+    console.error('Token validation failed:', e);
+    return null;
+  }
+}
+```
+
+### 4.5 MQTT Response Publisher
+
+```typescript
+async function publishProvisioningResponse(
+  deviceId: string,
+  response: ProvisioningResponse
+): Promise<void> {
+  await mqtt.publish(
+    `opticworks/${deviceId}/provision/response`,
+    JSON.stringify(response),
+    { qos: 1 }
+  );
+}
+```
+
 ---
 
 ## 5. Device State Tracking
@@ -402,6 +512,7 @@ CREATE TABLE devices (
     radar_connected BOOLEAN DEFAULT 1,
     last_seen DATETIME,
     first_seen DATETIME,
+    provisioned_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -517,6 +628,7 @@ async function getFleetStats(): Promise<FleetStats> {
 
 | Document | Purpose |
 |----------|---------|
+| `../contracts/PROTOCOL_PROVISIONING.md` | Complete provisioning protocol |
 | `../contracts/PROTOCOL_MQTT.md` | MQTT protocol |
 | `../contracts/SCHEMA_DEVICE_STATE.json` | Device state schema |
 | `../firmware/HARDWAREOS_MODULE_SECURITY.md` | Device authentication |

@@ -137,15 +137,47 @@ RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy 
 
 ### 5.2 Onboarding Flow
 
-1. Scan QR code on device
-2. Enter Wi-Fi credentials
-3. Device provisions and connects
-4. Create/edit zones
-5. Confirm setup complete
+1. Scan QR code on device (opens app or web fallback)
+2. Connect to device AP (`OpticWorks-XXXX`)
+3. Enter Wi-Fi credentials (via app or captive portal)
+4. Device provisions, connects to WiFi, and registers with cloud
+5. Create/edit zones
+6. Confirm setup complete
 
 **Target:** 80% of users complete in ≤60 seconds
 
-### 5.3 Zone Editor
+See `docs/contracts/PROTOCOL_PROVISIONING.md` for detailed provisioning protocol.
+
+### 5.3 QR Code Format
+
+| Requirement | Specification |
+|-------------|---------------|
+| Scheme | `opticworks://setup?d={device_id}&ap={ap_ssid}` |
+| Device ID | 12-char hex (last 6 bytes of MAC) |
+| AP SSID | `OpticWorks-{XXXX}` (last 4 of device_id, uppercase) |
+| Fallback | Web redirect to `https://setup.opticworks.io/` |
+
+### 5.4 Device AP Mode
+
+| Requirement | Specification |
+|-------------|---------------|
+| SSID | `OpticWorks-{XXXX}` (derived from device_id) |
+| Security | Open (no password) |
+| IP Address | `192.168.4.1` |
+| Captive Portal | Yes, auto-redirects to provisioning UI |
+| Timeout | 10 minutes (then deep sleep) |
+
+### 5.5 Provisioning API (Local)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/device-info` | GET | Device identity and version |
+| `/api/networks` | GET | Scan available WiFi networks |
+| `/api/provision` | POST | Submit WiFi credentials |
+| `/api/provision/status` | GET | Poll provisioning status |
+| `/api/provision/ws` | WS | Real-time provisioning updates |
+
+### 5.6 Zone Editor
 
 | Feature | Specification |
 |---------|---------------|
@@ -155,14 +187,14 @@ RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy 
 | Live preview | Target positions at ~10 Hz |
 | Validation | Reject self-intersecting polygons |
 
-### 5.4 Device Management
+### 5.7 Device Management
 
 - View device status (firmware version, health, Wi-Fi signal)
 - Trigger OTA update check
 - View update progress
 - Factory reset option
 
-### 5.5 AR Scanning (Post-Beta)
+### 5.8 AR Scanning (Post-Beta)
 
 - iOS RoomPlan API integration
 - Auto-propose zone boundaries from room geometry
