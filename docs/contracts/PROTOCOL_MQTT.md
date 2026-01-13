@@ -324,7 +324,6 @@ See: `SCHEMA_DEVICE_STATE.json`
   "device_id": "a1b2c3d4e5f6",
   "mac_address": "AA:BB:CC:D4:E5:F6",
   "firmware_version": "1.0.0",
-  "user_token": "eyJhbGciOiJIUzI1NiIs...",
   "timestamp": "2026-01-13T10:00:00Z"
 }
 ```
@@ -334,39 +333,40 @@ See: `SCHEMA_DEVICE_STATE.json`
 | `device_id` | string | Yes | 12-char hex device identifier |
 | `mac_address` | string | Yes | Full MAC address (AA:BB:CC:DD:EE:FF) |
 | `firmware_version` | string | Yes | Current firmware version (semver) |
-| `user_token` | string | No | JWT from app for automatic claiming |
 | `timestamp` | string | Yes | ISO 8601 timestamp |
+
+Cloud uses `mac_address` to lookup owner in purchase records database.
 
 ### 5.11 Provisioning Response (Cloud → Device)
 
-**Success:**
+**Success (owner found via purchase records):**
 ```json
 {
   "status": "registered",
   "device_id": "a1b2c3d4e5f6",
-  "claimed_by": "user_abc123",
+  "owner": "user_abc123",
   "timestamp": "2026-01-13T10:00:01Z"
 }
 ```
 
-**Failure:**
+**Success (no owner - device not in purchase records):**
 ```json
 {
-  "status": "rejected",
-  "error": "invalid_token",
-  "message": "User token expired or invalid",
+  "status": "registered",
+  "device_id": "a1b2c3d4e5f6",
+  "owner": null,
   "timestamp": "2026-01-13T10:00:01Z"
 }
 ```
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `status` | enum | Yes | `registered`, `rejected` |
+| `status` | enum | Yes | `registered` (provisioning always succeeds) |
 | `device_id` | string | Yes | Device identifier |
-| `claimed_by` | string | No | User ID if claimed (null if unclaimed) |
-| `error` | string | No | Error code if rejected |
-| `message` | string | No | Human-readable error message |
+| `owner` | string | No | User ID if found in purchase records (null otherwise) |
 | `timestamp` | string | Yes | ISO 8601 timestamp |
+
+**Note:** Provisioning no longer fails. Unowned devices work locally and can be claimed later via support.
 
 ---
 

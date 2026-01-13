@@ -1,6 +1,6 @@
 # Device Provisioning Protocol
 
-Version: 0.1
+Version: 0.2
 Date: 2026-01-13
 Owner: OpticWorks Firmware + Mobile + Cloud
 Status: Draft
@@ -9,13 +9,13 @@ Status: Draft
 
 ## 1. Purpose
 
-This document defines the complete provisioning flow for RS-1 devices, from factory state to fully operational and cloud-registered. It covers:
+This document defines the complete provisioning flow for RS-1 devices, from factory state to fully operational. It covers:
 
 - QR code format and deep linking
 - Device AP mode and captive portal
 - Local provisioning API
 - Cloud registration via MQTT
-- Device claiming and ownership
+- Automatic ownership via purchase records
 
 **This is the single source of truth for provisioning.** Related specs (M10 Security, Device Registry) should reference this document.
 
@@ -43,7 +43,7 @@ This document defines the complete provisioning flow for RS-1 devices, from fact
        │<──────────────────│                   │                   │
        │                   │                   │                   │
        │  5. POST /api/provision               │                   │
-       │  {ssid, password, user_token}         │                   │
+       │  {ssid, password}                     │                   │
        │──────────────────>│                   │                   │
        │                   │                   │                   │
        │  6. 202 Accepted  │                   │                   │
@@ -53,29 +53,27 @@ This document defines the complete provisioning flow for RS-1 devices, from fact
        │                   │─ ─ ─ ─ ─ ─ ─ ─ ─ >│                   │
        │                   │                   │                   │
        │                   │  8. MQTT CONNECT  │                   │
-       │                   │  (device_id + provisioning creds)     │
        │                   │──────────────────>│                   │
        │                   │                   │                   │
        │                   │  9. PUBLISH       │                   │
        │                   │  opticworks/{device_id}/provision     │
        │                   │──────────────────>│──────────────────>│
        │                   │                   │                   │
-       │                   │                   │  10. Validate &   │
-       │                   │                   │      register     │
+       │                   │                   │  10. Lookup MAC   │
+       │                   │                   │  in purchase DB   │
+       │                   │                   │  → auto-link owner│
        │                   │                   │<──────────────────│
        │                   │                   │                   │
-       │  11. Push notification / WebSocket    │                   │
+       │  11. Push notification (if owner found)                   │
        │  "RS-1 connected!"                    │                   │
        │<──────────────────────────────────────────────────────────│
        │                   │                   │                   │
-       │                   │  12. SUBSCRIBE    │                   │
-       │                   │  opticworks/{device_id}/config/update │
-       │                   │<──────────────────│<──────────────────│
-       │                   │                   │                   │
-       │  13. Open Zone Editor                 │                   │
+       │  12. Open Zone Editor                 │                   │
        │──────────────────>│                   │                   │
        │                   │                   │                   │
 ```
+
+**Key simplification:** Device ownership is determined by purchase records, not by tokens passed during provisioning. The cloud looks up the device MAC in the order database to find the purchaser.
 
 ---
 
@@ -269,7 +267,7 @@ Host: 192.168.4.1
 
 ### 5.3 POST /api/provision
 
-Submits WiFi credentials and optional user token for provisioning.
+Submits WiFi credentials for provisioning.
 
 **Request:**
 ```http
@@ -279,8 +277,7 @@ Content-Type: application/json
 
 {
   "ssid": "HomeNetwork",
-  "password": "secretpassword",
-  "user_token": "eyJhbGciOiJIUzI1NiIs..."
+  "password": "secretpassword"
 }
 ```
 
@@ -288,7 +285,6 @@ Content-Type: application/json
 |-------|------|----------|-------------|
 | `ssid` | string | Yes | Target WiFi SSID |
 | `password` | string | Yes | WiFi password (can be empty for open networks) |
-| `user_token` | string | No | JWT from OpticWorks app for automatic claiming |
 
 **Response (success):**
 ```http
@@ -351,7 +347,6 @@ Host: 192.168.4.1
 | `wifi_not_found` | SSID not found |
 | `wifi_timeout` | Connection timeout |
 | `cloud_unreachable` | Cannot reach MQTT broker |
-| `cloud_auth_failed` | Cloud rejected credentials |
 | `cloud_timeout` | Cloud registration timeout |
 
 ### 5.5 WebSocket /api/provision/ws
@@ -434,15 +429,18 @@ esp_err_t provisioning_connect_wifi(const char *ssid, const char *password) {
 
 ### 6.3 Credential Storage
 
-WiFi credentials are stored in NVS only after successful connection and cloud registration:
+WiFi credentials are stored in NVS after successful WiFi connection:
 
 ```c
-// Only commit after full provisioning success
-if (wifi_connected && cloud_registered) {
+// Commit after WiFi connection success
+if (wifi_connected) {
     config_store_set_network(ssid, password);
     config_store_set_provisioned(true);
     config_store_commit();
 }
+
+// Cloud registration happens after, but WiFi creds are already saved
+// This ensures device works locally even if cloud is unreachable
 ```
 
 ---
@@ -463,7 +461,6 @@ After WiFi connection, device publishes to registration topic:
   "device_id": "a1b2c3d4e5f6",
   "mac_address": "AA:BB:CC:D4:E5:F6",
   "firmware_version": "1.0.0",
-  "user_token": "eyJhbGciOiJIUzI1NiIs...",
   "timestamp": "2026-01-13T10:00:00Z"
 }
 ```
@@ -473,108 +470,127 @@ After WiFi connection, device publishes to registration topic:
 | `device_id` | string | Yes | 12-char hex device identifier |
 | `mac_address` | string | Yes | Full MAC address |
 | `firmware_version` | string | Yes | Current firmware version |
-| `user_token` | string | No | JWT from app for automatic claiming |
 | `timestamp` | string | Yes | ISO 8601 timestamp |
 
-### 7.2 Provisioning Response
+### 7.2 Ownership Lookup
+
+Cloud determines ownership by looking up the MAC address in the purchase database:
+
+```typescript
+async function lookupOwner(macAddress: string): Promise<string | null> {
+  // Orders table has: { order_id, user_email, device_mac, shipped_at }
+  const order = await db.execute(
+    'SELECT user_id FROM orders WHERE device_mac = ? AND shipped_at IS NOT NULL',
+    [macAddress]
+  );
+
+  return order.length > 0 ? order[0].user_id : null;
+}
+```
+
+**Ownership scenarios:**
+
+| Scenario | Result |
+|----------|--------|
+| MAC found in orders DB | Device auto-linked to purchaser |
+| MAC not found | Device registered but unowned |
+| Device resold/gifted | Original owner can transfer via support |
+
+### 7.3 Provisioning Response
 
 Cloud responds on:
 
 **Topic:** `opticworks/{device_id}/provision/response`
 
-**Success:**
+**Success (owner found):**
 ```json
 {
   "status": "registered",
   "device_id": "a1b2c3d4e5f6",
-  "claimed_by": "user_abc123",
+  "owner": "user_abc123",
   "timestamp": "2026-01-13T10:00:01Z"
 }
 ```
 
-**Failure:**
+**Success (no owner):**
 ```json
 {
-  "status": "rejected",
-  "error": "invalid_token",
-  "message": "User token expired or invalid",
+  "status": "registered",
+  "device_id": "a1b2c3d4e5f6",
+  "owner": null,
   "timestamp": "2026-01-13T10:00:01Z"
 }
 ```
 
-### 7.3 Provisioning Without User Token
+### 7.4 Unowned Devices
 
-If no `user_token` is provided (web-only provisioning):
+Devices without a purchase record still function fully:
 
-1. Device is registered but unclaimed
-2. User can claim later via pairing code (see M10 Security)
-3. Device functions normally for local Home Assistant use
+1. Local Home Assistant integration works
+2. Local Zone Editor works (see Section 8)
+3. Cloud features (remote access, OTA) require ownership
+4. User can claim via OpticWorks account + proof of purchase (support flow)
 
 ---
 
-## 8. User Token (JWT)
+## 8. Device Authentication
 
-### 8.1 Token Format
+### 8.1 Local Access (Zone Editor on LAN)
 
-The `user_token` is a JWT issued by OpticWorks authentication service:
+Devices use standard HTTP authentication for local access:
 
+| Parameter | Value |
+|-----------|-------|
+| Username | `admin` |
+| Default Password | Unique per device, printed on label |
+| Auth Method | HTTP Basic Auth or session cookie |
+
+**Default password format:** 8-character alphanumeric, printed on device label next to QR code.
+
+Example label:
 ```
-Header:
-{
-  "alg": "RS256",
-  "typ": "JWT",
-  "kid": "2026-01"
-}
-
-Payload:
-{
-  "sub": "user_abc123",
-  "email": "user@example.com",
-  "iat": 1704931200,
-  "exp": 1704934800,
-  "scope": "device:provision",
-  "iss": "https://auth.opticworks.io"
-}
-```
-
-### 8.2 Token Validation (Cloud)
-
-```typescript
-async function validateProvisioningToken(token: string): Promise<TokenPayload | null> {
-  try {
-    const payload = await jwt.verify(token, publicKey, {
-      issuer: 'https://auth.opticworks.io',
-      audience: 'opticworks-api',
-    });
-
-    if (!payload.scope.includes('device:provision')) {
-      return null;
-    }
-
-    return payload;
-  } catch (e) {
-    return null;
-  }
-}
+┌─────────────────────────────────┐
+│  OpticWorks RS-1                │
+│  [QR CODE]                      │
+│                                 │
+│  WiFi: OpticWorks-E5F6          │
+│  Password: Xk7mP2nQ             │
+│  MAC: AA:BB:CC:D4:E5:F6         │
+└─────────────────────────────────┘
 ```
 
-### 8.3 Token Acquisition (App)
+**Password can be changed** via local web UI at `http://{device_ip}/settings`.
 
-The app obtains a provisioning token before starting setup:
+### 8.2 Cloud Access (Zone Editor via OpticWorks)
 
-```typescript
-async function getProvisioningToken(): Promise<string> {
-  const response = await fetch('https://api.opticworks.io/auth/provision-token', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${userAccessToken}`,
-    },
-  });
+Cloud access uses standard OAuth:
 
-  const { provision_token } = await response.json();
-  return provision_token; // Valid for 1 hour
-}
 ```
+┌─────────────────────────────────────────────────────┐
+│  https://app.opticworks.io/devices/a1b2c3d4e5f6    │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐ │
+│  │                                               │ │
+│  │     Sign in to manage your RS-1              │ │
+│  │                                               │ │
+│  │     [  Continue with Google  ]               │ │
+│  │     [  Continue with Apple   ]               │ │
+│  │     [  Sign in with Email    ]               │ │
+│  │                                               │ │
+│  └───────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────┘
+```
+
+- User authenticates with OpticWorks account
+- Cloud verifies user owns the device (purchase record lookup)
+- Cloud proxies commands to device via MQTT
+
+### 8.3 Authentication Summary
+
+| Access Method | Auth Mechanism | When to Use |
+|---------------|----------------|-------------|
+| Local (LAN) | HTTP Basic Auth with device password | Home network, no internet needed |
+| Cloud (WAN) | OAuth with OpticWorks account | Remote access, multiple devices |
 
 ---
 
@@ -585,7 +601,7 @@ async function getProvisioningToken(): Promise<string> {
 | Method | Action |
 |--------|--------|
 | Hardware button | Hold reset button for 10 seconds |
-| App command | Send factory reset via Native API |
+| Local web UI | Settings → Factory Reset (requires device password) |
 | Cloud command | MQTT `opticworks/{device_id}/command/factory-reset` |
 
 ### 9.2 Reset Behavior
@@ -598,13 +614,16 @@ void provisioning_factory_reset(void) {
     // 2. Erase zone configuration
     config_store_erase_zones();
 
-    // 3. Clear provisioned flag
+    // 3. Reset device password to default (from flash)
+    config_store_reset_password();
+
+    // 4. Clear provisioned flag
     config_store_set_provisioned(false);
 
-    // 4. Keep device identity (device_id, device_secret)
-    // 5. Keep firmware (no rollback)
+    // 5. Keep device identity (device_id, device_secret)
+    // 6. Keep firmware (no rollback)
 
-    // 6. Reboot into AP mode
+    // 7. Reboot into AP mode
     esp_restart();
 }
 ```
@@ -613,11 +632,12 @@ void provisioning_factory_reset(void) {
 - Device ID and secret
 - Firmware version
 - eFuse-burned data (secure boot keys, anti-rollback counter)
+- Default device password (burned in flash at manufacturing)
 
 **Erased on reset:**
 - WiFi credentials
 - Zone configuration
-- User pairing tokens
+- Custom device password
 - Telemetry opt-in preference
 
 ---
@@ -638,18 +658,17 @@ void provisioning_factory_reset(void) {
 | Error | User Message | Recovery |
 |-------|--------------|----------|
 | MQTT connect fail | "Cannot reach OpticWorks" | Retry, check internet |
-| Token invalid | "Please sign in again" | Re-authenticate in app |
-| Token expired | "Session expired" | Refresh token |
-| Device blocked | "Device cannot be registered" | Contact support |
+| Timeout | "Cloud registration timed out" | Device works locally, retries on next boot |
 
 ### 10.3 Graceful Degradation
 
 If cloud registration fails but WiFi is connected:
 
-1. Store WiFi credentials anyway
+1. WiFi credentials already saved (see 6.3)
 2. Device operates in local-only mode
 3. Retry cloud registration on next boot
 4. User can still use with Home Assistant
+5. Local Zone Editor works with device password
 
 ---
 
@@ -661,7 +680,7 @@ The provisioning AP is intentionally open (no password) for ease of setup. Mitig
 
 | Risk | Mitigation |
 |------|------------|
-| Eavesdropping | No sensitive data transmitted over AP (password is for target network, not stored until after connection) |
+| Eavesdropping | No sensitive data transmitted over AP |
 | Rogue provisioning | Device accepts provisioning only in AP mode; user must physically access device |
 | AP spoofing | QR code contains expected AP name; app warns if mismatch |
 
@@ -672,12 +691,18 @@ The provisioning AP is intentionally open (no password) for ease of setup. Mitig
 - Password never transmitted to cloud
 - Password cleared on factory reset
 
-### 11.3 User Token Security
+### 11.3 Device Password Security
 
-- Token is short-lived (1 hour)
-- Token scope is limited to `device:provision`
-- Token transmitted over MQTT (TLS)
-- Token validated server-side
+- Default password is unique per device (generated at manufacturing)
+- Password printed on physical label (requires physical access)
+- User can change password after setup
+- Password stored hashed in NVS
+
+### 11.4 Cloud Authentication
+
+- OAuth 2.0 with industry-standard providers
+- Device ownership verified via purchase records
+- No sensitive tokens stored on device
 
 ---
 
@@ -697,10 +722,10 @@ The provisioning AP is intentionally open (no password) for ease of setup. Mitig
 
 | Module | Provisioning Responsibility |
 |--------|---------------------------|
-| M06 Config Store | Store/retrieve WiFi credentials, provisioned flag |
+| M06 Config Store | Store/retrieve WiFi credentials, device password, provisioned flag |
 | M08 Timebase | AP mode timeout, connection timeouts |
 | M09 Logging | Provisioning events for diagnostics |
-| M10 Security | Credential encryption, token handling |
+| M10 Security | Password hashing, credential encryption |
 
 ### 12.3 State Machine
 
@@ -738,14 +763,14 @@ The provisioning AP is intentionally open (no password) for ease of setup. Mitig
 
 | Scenario | Steps | Expected |
 |----------|-------|----------|
-| Happy path (app) | Scan QR → app opens → enter WiFi → success | Device provisioned, claimed by user |
-| Happy path (web) | Scan QR → open browser → captive portal → enter WiFi → success | Device provisioned, unclaimed |
+| Happy path (app) | Scan QR → app opens → enter WiFi → success | Device provisioned, auto-linked to purchaser |
+| Happy path (web) | Scan QR → captive portal → enter WiFi → success | Device provisioned, auto-linked if purchased |
 | Wrong password | Enter wrong password | Error shown, can retry |
 | Network not found | Enter non-existent SSID | Error shown, rescan |
 | Cloud unreachable | Block MQTT port | WiFi saved, local-only mode |
-| Token expired | Wait > 1 hour | "Session expired" error |
+| No purchase record | Device MAC not in orders DB | Device works, unowned |
 | AP timeout | Don't interact for 10 min | Device sleeps |
-| Factory reset | Hold button 10s | Returns to AP mode |
+| Factory reset | Hold button 10s | Returns to AP mode, password reset |
 
 ### 13.2 Mock Server
 
@@ -775,3 +800,4 @@ python3 mock_server.py --port 80
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1 | 2026-01-13 | OpticWorks | Initial draft |
+| 0.2 | 2026-01-13 | OpticWorks | Simplified: removed user_token, added purchase record lookup, standard device password auth |

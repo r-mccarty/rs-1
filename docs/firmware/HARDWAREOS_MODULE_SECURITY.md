@@ -278,7 +278,6 @@ typedef struct {
 | Open AP | Accept | Reduces setup friction; no sensitive data on AP network |
 | Password exposure | Mitigate | WiFi password only stored after successful connection |
 | Rogue provisioning | Accept | Requires physical access to see QR code |
-| Man-in-middle | Mitigate | User token validated server-side over TLS |
 
 ### 8.2 Provisioning API Security
 
@@ -303,37 +302,19 @@ typedef struct {
 | `GET /api/provision/status` | None | 60/min |
 | `WS /api/provision/ws` | None | 1 connection |
 
-### 8.3 User Token Handling
+### 8.3 Credential Storage
 
-User tokens from the mobile app are handled securely:
+WiFi credentials are stored after successful WiFi connection (before cloud registration):
 
 ```c
-// Token is NOT stored on device - passed through to cloud
-typedef struct {
-    bool has_user_token;
-    uint8_t token_hash[32];     // For logging only (not stored)
-} provisioning_session_t;
-
-// Token transmitted directly to cloud via MQTT (TLS)
-void provisioning_send_registration(const char *user_token) {
-    // Token included in MQTT payload, validated server-side
-    // Device does not validate or store the token
+// Commit after WiFi connection success
+if (wifi_connected) {
+    config_store_set_network(ssid, password);
+    config_store_set_provisioned(true);
+    config_store_commit();
 }
-```
 
-### 8.4 Credential Storage Timing
-
-WiFi credentials are stored only after full provisioning success:
-
-```c
-typedef enum {
-    PROV_CRED_PENDING,      // Received but not stored
-    PROV_CRED_VALIDATED,    // WiFi connected successfully
-    PROV_CRED_COMMITTED,    // Stored in NVS after cloud registration
-} provisioning_cred_state_t;
-
-// Credentials only committed after cloud registration
-// If cloud fails, device can still save for local-only mode
+// This ensures device works locally even if cloud is unreachable
 ```
 
 ---
@@ -364,43 +345,43 @@ esp_err_t security_noise_encrypt(noise_session_t *session, const uint8_t *plaint
 esp_err_t security_noise_decrypt(noise_session_t *session, const uint8_t *ciphertext, size_t len, uint8_t *plaintext);
 ```
 
-### 9.3 Local Pairing
+### 9.3 Device Password Authentication
 
-Device pairing for zone editor and local API:
-
-**Critical:** The pairing CODE has a short validity (5 minutes), but the SESSION TOKEN generated after successful pairing has a longer validity (1 hour) to allow for extended zone editing sessions. See RFD-001 issue C9.
+Local access to the device (Zone Editor, settings) uses standard HTTP authentication:
 
 ```c
 typedef struct {
-    uint8_t pairing_code[6];        // 6-digit code (displayed/QR)
-    uint32_t code_valid_until;      // Code expiration (5 minutes)
-} pairing_request_t;
+    char username[16];              // Always "admin"
+    uint8_t password_hash[32];      // SHA-256 of password
+    uint8_t password_salt[16];      // Random salt
+    bool password_changed;          // true if user changed default
+} device_auth_t;
 
+// Default password is unique per device, generated at manufacturing
+// and stored in a read-only flash partition
 typedef struct {
-    uint8_t session_token[16];      // Session token for API access
-    uint32_t token_valid_until;     // Token expiration (1 hour)
-    char client_id[32];             // Client identifier
-} pairing_session_t;
-
-// Generate pairing code (valid for 5 minutes)
-void security_generate_pairing(pairing_request_t *request);
-
-// Validate pairing attempt, returns session token valid for 1 hour
-bool security_validate_pairing(const char *code, pairing_session_t *session_out);
-
-// Check if session token is still valid
-bool security_session_valid(const uint8_t *token);
+    char default_password[9];       // 8 chars + null terminator
+} manufacturing_data_t;
 ```
 
-**Pairing Flow:**
+**Authentication Flow:**
 ```
-1. User initiates pairing (button press or app request)
-2. Device generates 6-digit code, displays/QR (valid 5 min)
-3. User enters code in Zone Editor app
-4. Device validates code, generates session token (valid 1 hour)
-5. App uses session token for all subsequent API calls
-6. After 1 hour, session expires, user must re-pair
+1. User connects to device on LAN (http://{device_ip}/)
+2. Device returns 401 Unauthorized with WWW-Authenticate: Basic
+3. User enters admin / {password from device label}
+4. Device validates credentials, returns session cookie
+5. Subsequent requests include session cookie (valid 24 hours)
+6. User can change password via /settings endpoint
 ```
+
+**Password Requirements:**
+- Default: 8-character alphanumeric (printed on device label)
+- Custom: Minimum 8 characters
+- Stored: SHA-256 hash with random salt
+
+**Password Reset:**
+- Factory reset restores default password
+- Default password is in read-only flash (survives reset)
 
 ## 10. Key Management
 
@@ -413,7 +394,8 @@ bool security_session_valid(const uint8_t *token);
 | Firmware signing key | Firmware (public only) | OTA validation |
 | Device secret | NVS (encrypted) | Cloud auth |
 | API PSK | NVS (encrypted) | API encryption |
-| Pairing token | RAM | Local pairing |
+| Device password | NVS (hashed) | Local API auth |
+| Default password | Flash (read-only) | Factory default |
 
 ### 10.2 Key Rotation
 
@@ -427,8 +409,12 @@ bool security_session_valid(const uint8_t *token);
 
 Manufacturing provisioning:
 1. Generate device secret on secure workstation.
-2. Write to NVS via serial during manufacture.
-3. Register device_id and secret_hash in cloud database.
+2. Generate unique 8-char device password.
+3. Write device secret to NVS via serial during manufacture.
+4. Write default password to read-only flash partition.
+5. Print password on device label (next to QR code).
+6. Register device_id, secret_hash, and MAC in cloud database.
+7. Record MAC → order mapping when device ships.
 
 ## 11. Anti-Rollback
 

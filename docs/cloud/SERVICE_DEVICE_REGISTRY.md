@@ -188,61 +188,79 @@ async function handleProvisioningRequest(message: MQTTMessage): Promise<void> {
     new Date()
   ]);
 
-  // Handle user token for automatic claiming
-  let claimedBy: string | null = null;
-  if (request.user_token) {
-    const tokenPayload = await validateProvisioningToken(request.user_token);
-    if (tokenPayload) {
-      await claimDeviceForUser(deviceId, tokenPayload.sub);
-      claimedBy = tokenPayload.sub;
+  // Lookup owner via purchase records
+  const owner = await lookupOwnerByMAC(request.mac_address);
 
-      // Notify user via push notification / WebSocket
-      await notifyUser(tokenPayload.sub, {
-        type: 'device_provisioned',
-        device_id: deviceId,
-        message: 'RS-1 connected successfully!'
-      });
-    }
+  if (owner) {
+    // Auto-link device to purchaser
+    await linkDeviceToOwner(deviceId, owner.user_id);
+
+    // Notify user via push notification / WebSocket
+    await notifyUser(owner.user_id, {
+      type: 'device_provisioned',
+      device_id: deviceId,
+      message: 'RS-1 connected successfully!'
+    });
   }
 
   // Send success response
   await publishProvisioningResponse(deviceId, {
     status: 'registered',
     device_id: deviceId,
-    claimed_by: claimedBy,
+    owner: owner?.user_id ?? null,
     timestamp: new Date().toISOString()
   });
 
   // Log audit event
   await logAuditEvent(deviceId, 'provisioned', {
     firmware_version: request.firmware_version,
-    claimed_by: claimedBy
+    owner: owner?.user_id ?? null
   });
 }
 ```
 
-### 4.4 Token Validation
+### 4.4 Purchase Record Lookup
+
+Ownership is determined by looking up the device MAC in the orders database:
 
 ```typescript
-async function validateProvisioningToken(token: string): Promise<TokenPayload | null> {
-  try {
-    const payload = await jwt.verify(token, publicKey, {
-      issuer: 'https://auth.opticworks.io',
-      algorithms: ['RS256']
-    });
+interface OrderRecord {
+  order_id: string;
+  user_id: string;
+  user_email: string;
+  device_mac: string;
+  shipped_at: Date;
+}
 
-    // Check scope
-    if (!payload.scope?.includes('device:provision')) {
-      return null;
-    }
+async function lookupOwnerByMAC(macAddress: string): Promise<OrderRecord | null> {
+  // Orders table is populated when devices ship
+  // MAC address is recorded during manufacturing and linked to order at fulfillment
+  const result = await db.execute(`
+    SELECT order_id, user_id, user_email, device_mac, shipped_at
+    FROM orders
+    WHERE device_mac = ? AND shipped_at IS NOT NULL
+  `, [macAddress.toUpperCase()]);
 
-    return payload;
-  } catch (e) {
-    console.error('Token validation failed:', e);
-    return null;
-  }
+  return result.length > 0 ? result[0] : null;
+}
+
+async function linkDeviceToOwner(deviceId: string, userId: string): Promise<void> {
+  await db.execute(`
+    INSERT INTO device_ownership (device_id, user_id, role, claimed_at)
+    VALUES (?, ?, 'owner', ?)
+    ON CONFLICT (device_id, user_id) DO NOTHING
+  `, [deviceId, userId, new Date()]);
 }
 ```
+
+**Ownership scenarios:**
+
+| Scenario | Result |
+|----------|--------|
+| MAC found in orders DB | Device auto-linked to purchaser |
+| MAC not found | Device registered but unowned (works locally) |
+| Device resold/gifted | Original owner can transfer via support |
+| Proof of purchase | User can claim via support with receipt |
 
 ### 4.5 MQTT Response Publisher
 
@@ -313,48 +331,65 @@ async function handleLWT(deviceId: string): Promise<void> {
 
 ## 6. Device Ownership
 
-### 6.1 Claiming a Device
+### 6.1 Automatic Ownership via Purchase Records
 
-Users claim devices by entering a pairing code:
+Device ownership is automatically determined when the device provisions:
+
+1. Device registers with cloud, sending MAC address
+2. Cloud looks up MAC in orders database
+3. If found, device is auto-linked to purchaser's account
+4. User receives push notification "RS-1 connected!"
+
+See Section 4.4 for implementation details.
+
+### 6.2 Manual Claiming (Support Flow)
+
+For devices not in the orders database (gifts, resales, lost records):
 
 ```typescript
-// POST /api/devices/claim
-async function claimDevice(request: Request, userId: string): Promise<Response> {
-  const { pairing_code, device_id } = await request.json();
+// POST /admin/devices/claim (support agent only)
+async function adminClaimDevice(request: Request): Promise<Response> {
+  const { device_id, user_email, proof_of_purchase } = await request.json();
 
-  // Verify pairing code with device
-  // (Device generates code, user enters in app, app sends to cloud)
-  const valid = await verifyPairingCode(device_id, pairing_code);
+  // Verify proof of purchase (receipt, order email, etc.)
+  // This is a manual review step by support
 
-  if (!valid) {
-    return new Response('Invalid pairing code', { status: 403 });
+  const user = await getUserByEmail(user_email);
+  if (!user) {
+    return new Response('User not found', { status: 404 });
   }
 
   // Check if already claimed
   const existing = await db.execute(
-    'SELECT user_id FROM device_ownership WHERE device_id = ?',
-    [device_id]
+    'SELECT user_id FROM device_ownership WHERE device_id = ? AND role = ?',
+    [device_id, 'owner']
   );
 
   if (existing.length > 0) {
-    return new Response('Device already claimed', { status: 409 });
+    return new Response('Device already has an owner', { status: 409 });
   }
 
   // Create ownership
   await db.execute(`
-    INSERT INTO device_ownership (device_id, user_id, role, claimed_at)
-    VALUES (?, ?, 'owner', ?)
-  `, [device_id, userId, new Date()]);
+    INSERT INTO device_ownership (device_id, user_id, role, claimed_at, claimed_via)
+    VALUES (?, ?, 'owner', ?, 'support')
+  `, [device_id, user.user_id, new Date()]);
+
+  // Log for audit
+  await logAuditEvent(device_id, 'claimed_via_support', {
+    user_id: user.user_id,
+    proof_of_purchase
+  });
 
   return Response.json({
     device_id,
-    owner: userId,
+    owner: user.user_id,
     claimed_at: new Date().toISOString()
   });
 }
 ```
 
-### 6.2 Sharing a Device
+### 6.3 Sharing a Device
 
 Owners can share access with other users:
 
