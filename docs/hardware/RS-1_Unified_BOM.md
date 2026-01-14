@@ -1,0 +1,226 @@
+# OpticWorks RS-1 Unified Bill of Materials
+**Architecture: Single PCBA, Multi-Variant Population Strategy**  
+**Last Updated:** 2025-01-13  
+**Status:** Pre-Production / Parts Validation Required
+
+---
+
+## Design Architecture Summary
+
+**Platform:** ESP32-S3 Single-Board Design  
+**Strategy:** One PCBA with selective population for different SKUs  
+**PCB:** 2-Layer (JLCPCB or PCBWAY)  
+**Power Options:** USB-C Native or PoE (802.3af)  
+
+---
+
+## ⚠️ OPEN QUESTIONS - REQUIRES RESOLUTION
+
+| Item | Design Doc | Scratchpad | Decision Needed |
+|------|-----------|-----------|----------------|
+| **MCU** | ESP32-S3-WROOM-1-N4 (4MB/0MB) | ESP32-S3-WROOM-1-N8R2 (8MB/2MB) | Which flash/PSRAM config? |
+| **Static Radar** | LD2410B | LD2410C or LD2412 | Which variant(s)? |
+| **Dynamic Radar** | LD2450 | LD2540 | LD2540 typo? Should be LD2450? |
+
+---
+
+## Core Platform BOM (Populated on ALL Variants)
+
+### Power & Connectivity
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| USB-C Connector | SHOU HAN | TYPE-C 16PIN 2MD(073) | USB Data + Power | 1 | TBD |
+| LDO Regulator | MICRONE | ME6211C33M5G-N | 3.3V Rail | 1 | TBD |
+| Decoupling Cap | CCTC | TCC0603X7R104K500CT | 100nF/0.1µF | Multiple | TBD |
+| Bulk Cap | Samsung | CL05A106MQ5NUNC | 10µF | Multiple | TBD |
+| USB Resistor | UNI-ROYAL | 0603WAF330JT5E | 33Ω (USB-C) | 2 | TBD |
+| USB Resistor | UNI-ROYAL | 0603WAF5101T5E | 5.1kΩ (USB-C CC) | 2 | TBD |
+| Power MOSFET | UMW | AO3401A | Power Gating | 1 | TBD |
+
+### MCU
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| **MCU** | **ESPRESSIF** | **ESP32-S3-WROOM-1-N4** or **N8R2** | Main Controller | 1 | **$3.42** |
+
+*Note: Final decision needed on flash/PSRAM configuration*
+
+### Environmental Sensors (All Variants)
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| Temp/Humidity | Aosong | AHT20 | Temperature & Humidity | 1 | TBD |
+| Lux Sensor | LITEON | LTR-303ALS-01 | Ambient Light | 1 | TBD |
+| Status LED | XINGLIGHT | XL-5050RGBC-2812B-S | WS2812-style RGB | 1 | TBD |
+
+### User Interface
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| Reset Button | XKB Connection | TS-1187A-B-A-B | User Reset | 1 | TBD |
+
+### Debug/Programming
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| UART Header | Generic | SOICbite or equiv | Serial Debug | 1 (DNP) | TBD |
+| Generic Header | Ckmtw | B-2100S02P-A110 | Optional Breakout | 1 (DNP) | TBD |
+
+---
+
+## Variant-Specific Components (Selective Population)
+
+### RS-1 Static: LD2410 Presence Detection
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| **Static Radar** | **HiLink** | **LD2410B/C or LD2412** | Presence Detection | 1 | **~$2.80** |
+| mmWave Header | Generic | DNP - Solder Direct | Radar Connection | 1 | N/A |
+
+**Estimated BOM:** ~$6.61  
+**Target Retail:** $69.00
+
+---
+
+### RS-1 Dynamic: LD2450 Multi-Target Tracking + PIR
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| **Dynamic Radar** | **HiLink** | **LD2450** (or LD2540?) | Multi-Target Tracking | 1 | **~$11.50** |
+| PIR Sensor | Senba Sensing | AS312 | Passive Infrared | 1 | TBD |
+| PIR Lens | Senba Sensing | SB-F-02 | Fresnel Lens | 1 | TBD |
+| mmWave Header | Generic | DNP - Solder Direct | Radar Connection | 1 | N/A |
+
+**Estimated BOM:** ~$15.31  
+**Target Retail:** $69.00
+
+*Note: Scratchpad lists LD2540 - verify this is LD2450 for multi-target tracking*
+
+---
+
+### RS-1 Fusion: Dual Radar + PIR
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| Static Radar | HiLink | LD2410B/C or LD2412 | Presence Detection | 1 | ~$2.80 |
+| Dynamic Radar | HiLink | LD2450 (or LD2540?) | Multi-Target Tracking | 1 | ~$11.50 |
+| PIR Sensor | Senba Sensing | AS312 | Passive Infrared | 1 | TBD |
+| PIR Lens | Senba Sensing | SB-F-02 | Fresnel Lens | 1 | TBD |
+| mmWave Headers | Generic | DNP - Solder Direct | Radar Connections | 2 | N/A |
+
+**Estimated BOM:** ~$18.11  
+**Target Retail:** $99.00
+
+**Layout Note:** Place radars at opposite ends of PCB to minimize interference.
+
+---
+
+## Add-On Options (Cross-Variant)
+
+### PoE Power Option (All Variants)
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| Ethernet PHY | REALTEK | RTL8201F-VB-CG | 10/100 PHY (RMII) | 1 | ~$0.40 |
+| PoE Controller | SILICON LABS | SI3404-A-GMR | Isolated Flyback PD | 1 | TBD |
+| RJ45 Connector | kinghelm | KH-RJ45-58-8P8C | Ethernet Jack | 1 | TBD |
+| Ethernet Transformer | Dongguan Mentech | H1601CG | Magnetics | 1 | TBD |
+| Bridge Rectifier | Shikues | MB10S | PoE Rectification | 1 | TBD |
+| Crystal | YXC | X322525MOB4SI | 25MHz Oscillator | 1 | TBD |
+
+**Estimated BOM Add:** +$4.32  
+**Target Retail Add:** +$30.00
+
+**Safety Note:** Si3404 provides isolated flyback topology to protect against USB+PoE simultaneous connection.
+
+---
+
+### IAQ Air Quality Option (All Variants)
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| TVOC/CO2 Sensor | ScioSense | ENS160-BGLM | Air Quality | 1 | ~$4.60 |
+| Pogo Pins | Generic | 0906-2-15-20-75-14-11-0 | Daughtercard Interface | 5 | TBD |
+
+**Implementation:** Sensor mounted on separate daughtercard, connects via pogo pins (PWR, GND, I2C/SPI)  
+**Mechanical:** Magnet retention system  
+
+**Estimated BOM Add:** ~$4.60  
+**Target Retail Add:** +$30.00
+
+---
+
+## Product Lineup Summary
+
+| SKU | Configuration | Estimated BOM | Retail Price | Margin |
+|-----|--------------|---------------|--------------|--------|
+| RS-1 Static | USB + LD2410 | ~$6.61 | $69.00 | TBD |
+| RS-1 Dynamic | USB + LD2450 + PIR | ~$15.31 | $69.00 | TBD |
+| RS-1 Fusion | USB + Dual Radar + PIR | ~$18.11 | $99.00 | TBD |
+| PoE Add-On | + Ethernet/PoE | +$4.32 | +$30.00 | TBD |
+| IAQ Add-On | + Air Quality | +$4.60 | +$30.00 | TBD |
+
+**Example Configurations:**
+- RS-1 Dynamic + PoE: $99.00 ($15.31 + $4.32 = ~$19.63 BOM)
+- RS-1 Fusion + PoE + IAQ: $159.00 ($18.11 + $4.32 + $4.60 = ~$27.03 BOM)
+
+---
+
+## Pin Mapping (ESP32-S3)
+
+### RMII Ethernet (PoE Variant)
+- GPIO 1-15: RMII Interface to RTL8201F
+
+### USB Interface
+- GPIO 19/20: Native USB D+/D-
+
+### Radar Interfaces
+- Static (LD2410): UART
+- Dynamic (LD2450): UART (separate pins)
+
+### I2C Bus (Sensors)
+- SDA/SCL: AHT20, LTR-303, ENS160 (if populated)
+
+### Other Peripherals
+- PIR: GPIO (Digital In)
+- WS2812 LED: GPIO (Single-wire data)
+- Reset Button: GPIO (Input w/ pullup)
+
+**Total GPIO Required (Fusion+PoE):** ~14 pins  
+**ESP32-S3 Available:** 45 GPIOs ✓
+
+---
+
+## Next Actions
+
+### Immediate (Design Phase)
+1. **Resolve open questions** (MCU config, radar part numbers)
+2. **Component library generation** using `easyeda2kicad` for:
+   - Si3404 (PoE Controller)
+   - Link-PP Transformer (if different from H1601CG)
+   - Kinghelm RJ45
+3. **Create LCSC parts database** with live pricing
+4. **Verify all part availability** and lead times
+
+### Schematic Phase
+1. Route ESP32-S3 with finalized pin map
+2. Design isolated PoE power stage (Si3404 + flyback)
+3. Design I2C sensor bus (AHT20, LTR-303, ENS160)
+4. Design dual UART interfaces for radars
+
+### Layout Phase
+1. 2-layer PCB optimization
+2. Radar placement (opposite ends for Fusion)
+3. PoE isolation boundary design
+4. EMI/RF considerations for mmWave sensors
+
+---
+
+## Notes & Assumptions
+
+1. **Single PCBA Strategy:** One PCB design handles all variants through selective component population
+2. **Cost Estimates:** Based on 100-unit pricing; will decrease with volume
+3. **PoE Safety:** Isolated flyback topology (Si3404) protects against USB+PoE simultaneous connection
+4. **IAQ Modularity:** Pogo pin + magnet approach allows field upgrades
+5. **ESP32-S3 Rationale:** Native USB + MAC support, massive GPIO count, future-proof architecture
+6. **Legacy Options Removed:** ESP32-C3 and ESP32-32E eliminated due to MAC/pin limitations
+
+---
+
+## Pricing Database TODO
+- [ ] Extract all parts into LCSC-compatible format
+- [ ] Build automated pricing sheets with volume breaks
+- [ ] Calculate margin models for each configuration
+- [ ] Identify second sources for critical components
+- [ ] Validate JLCPCB assembly capabilities for all parts

@@ -7,11 +7,21 @@ This file provides context for AI agents working on the RS-1 codebase.
 ## Project Overview
 
 RS-1 is a presence sensor product from OpticWorks, built on:
-- **MCU**: ESP32-C3-MINI-1
-- **Radar**: LD2450 (24GHz mmWave, 3 targets, 6m range)
+- **MCU**: ESP32-S3-WROOM-1 (single PCBA, multi-variant population)
+- **Radar**: LD2450 (24GHz mmWave, 3 targets, 6m range) and/or LD2410 (presence)
 - **Firmware**: HardwareOS (custom ESP-IDF stack)
 - **Cloud**: Cloudflare Workers + D1 + R2, EMQX for MQTT
 - **Integration**: ESPHome Native API for Home Assistant
+
+### Product Variants
+
+| Variant | Radar | Features | Target Retail |
+|---------|-------|----------|---------------|
+| RS-1 Static | LD2410 | Presence detection | $69 |
+| RS-1 Dynamic | LD2450 + PIR | Multi-target tracking | $69 |
+| RS-1 Fusion | LD2410 + LD2450 + PIR | Full capability | $99 |
+
+**Add-ons:** PoE (+$30), IAQ Air Quality (+$30)
 
 ---
 
@@ -50,6 +60,11 @@ rs-1/
     │   ├── SCHEMA_TELEMETRY.json      # Telemetry payload schema
     │   ├── SCHEMA_DEVICE_STATE.json   # Device state schema
     │   └── MOCK_BOUNDARIES.md  # Contract-based testing strategy
+    │
+    ├── hardware/             # Hardware specifications
+    │   ├── HARDWARE_SPEC.md  # Formal hardware requirements & BOM
+    │   ├── RS-1_Unified_BOM.md  # Detailed bill of materials
+    │   └── hardware-concept-evolution.md  # Architecture decisions
     │
     ├── testing/              # Test specifications
     │   ├── INTEGRATION_TESTS.md  # Cross-module test scenarios
@@ -107,6 +122,42 @@ Backend services run on Cloudflare with EMQX for MQTT:
 
 ---
 
+## Hardware Documentation
+
+Hardware specifications are in `docs/hardware/`. Key documents:
+
+| Document | Purpose |
+|----------|---------|
+| `HARDWARE_SPEC.md` | Formal hardware requirements, BOM, electrical specs |
+| `RS-1_Unified_BOM.md` | Detailed bill of materials with part numbers |
+| `hardware-concept-evolution.md` | Architecture decisions (C3→S3 migration) |
+
+### Hardware Architecture
+
+Single PCBA design with selective population for three product variants:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     RS-1 Platform                           │
+├─────────────────────────────────────────────────────────────┤
+│  Core (All Variants):                                       │
+│  • ESP32-S3-WROOM-1 (MCU)                                   │
+│  • USB-C (Power + Data)                                     │
+│  • AHT20 (Temp/Humidity), LTR-303 (Lux), WS2812 (LED)      │
+├─────────────────────────────────────────────────────────────┤
+│  Variant Population:                                        │
+│  • Static:  LD2410 radar                                    │
+│  • Dynamic: LD2450 radar + PIR                              │
+│  • Fusion:  LD2410 + LD2450 + PIR                          │
+├─────────────────────────────────────────────────────────────┤
+│  Add-On Options:                                            │
+│  • PoE: RTL8201F PHY + Si3404 isolated flyback             │
+│  • IAQ: ENS160 TVOC/eCO2 (daughtercard via pogo pins)      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Key Technical Details
 
 ### LD2450 Radar
@@ -116,11 +167,15 @@ Backend services run on Cloudflare with EMQX for MQTT:
 - Coordinate range: X ±6000mm, Y 0-6000mm
 - Frame size: 40 bytes
 
-### ESP32-C3-MINI-1
-- Architecture: RISC-V single-core, 160MHz
-- Flash: 4MB
-- SRAM: 400KB (200KB heap available)
+### ESP32-S3-WROOM-1
+- Architecture: Xtensa LX7 dual-core, 240MHz
+- Flash: 4MB (N4 variant) or 8MB (N8R2 variant)
+- SRAM: 512KB
+- GPIO: 45 programmable (supports Ethernet MAC + dual radar)
+- Native USB: Yes (no external bridge needed)
 - Framework: ESP-IDF 5.x
+
+**Note:** Migrated from ESP32-C3 to ESP32-S3 for native Ethernet MAC support and GPIO count. See `docs/hardware/hardware-concept-evolution.md` for rationale.
 
 ### Coordinate System
 - **Canonical unit**: millimeters (mm)
@@ -209,6 +264,8 @@ These are critical assumptions. If any change, review affected modules:
 
 | Document | Purpose |
 |----------|---------|
+| `docs/hardware/HARDWARE_SPEC.md` | **Hardware requirements, BOM, electrical specs** |
+| `docs/hardware/RS-1_Unified_BOM.md` | **Detailed bill of materials** |
 | `docs/firmware/GLOSSARY.md` | Canonical term definitions |
 | `docs/firmware/COORDINATE_SYSTEM.md` | Sensor coordinate system |
 | `docs/firmware/MEMORY_BUDGET.md` | Resource constraints |
