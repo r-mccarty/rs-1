@@ -59,9 +59,9 @@ This repo covers the full family; the hardware docs define population options an
 | **MCU** | ESP32-WROOM-32E + CH340N USB-UART Bridge |
 | **Radar** | LD2410 (Lite), or LD2410 + LD2450 dual fusion (Pro) |
 | **Detection Range** | Up to 6 meters |
-| **Field of View** | 120° horizontal, 60° vertical (LD2450) |
-| **Targets Tracked** | Up to 3 simultaneously (Pro only) |
-| **Update Rate** | 33 Hz (30ms frames, LD2450) |
+| **Field of View** | LD2410: 120° × 120°; LD2450: 120° × 60° |
+| **Targets Tracked** | Binary (Lite); up to 3 simultaneously (Pro) |
+| **Update Rate** | ~5 Hz (LD2410); 33 Hz (LD2450, Pro) |
 | **Connectivity** | Wi-Fi 802.11 b/g/n; optional Ethernet via RMII PHY (PoE variants) |
 | **Power** | USB-C 5V; optional PoE (802.3af) |
 
