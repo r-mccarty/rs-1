@@ -191,41 +191,77 @@ The RS-1 host provides the mating interface:
 
 ## 3. Electrical Specifications
 
-### 3.1 Power Requirements
+### 3.1 Power Architecture
 
-| Parameter | Min | Typ | Max | Unit |
-|-----------|-----|-----|-----|------|
-| Supply Voltage (VCC) | 1.71 | 1.8 | 1.98 | V |
-| Supply Current (Measurement) | - | 32 | - | mA |
-| Supply Current (Idle) | - | 10 | - | µA |
+The ENS160 has **separate VDD (core) and VDDIO (I/O) supply pins**, enabling direct 3.3V I2C without level shifting:
 
-**Note:** ENS160 operates at 1.8V. RS-1 provides 3.3V; a voltage regulator or level shifter may be required on the IAQ module.
+```
+From RS-1 Host (3.3V I2C bus):
 
-### 3.2 I2C Interface
+   VCC (3.3V) ──┬──────────────────────────────► VDDIO (ENS160 I/O)
+                │                                 ↳ Enables 3.3V I2C
+                │
+                └──► LDO (1.8V) ──► VDD (ENS160 core)
+                     ME6211A18M3G    ↳ 1.71V - 1.98V required
+
+   GND ────────────────────────────────────────► GND
+
+   SDA ────────────────────────────────────────► SDA (3.3V logic, direct)
+   SCL ────────────────────────────────────────► SCL (3.3V logic, direct)
+```
+
+**Key Insight:** No level shifter required. ENS160 VDDIO accepts 1.71V - 3.6V, so it interfaces directly with ESP32's 3.3V I2C bus.
+
+### 3.2 Power Requirements
+
+| Parameter | Min | Typ | Max | Unit | Notes |
+|-----------|-----|-----|-----|------|-------|
+| Host Supply (VCC from pogo pin) | 3.0 | 3.3 | 3.6 | V | From RS-1 3.3V rail |
+| ENS160 Core (VDD) | 1.71 | 1.8 | 1.98 | V | Via on-module LDO |
+| ENS160 I/O (VDDIO) | 1.71 | 3.3 | 3.6 | V | Direct from VCC |
+| Current (Measurement mode) | - | 32 | - | mA | ENS160 active |
+| Current (Idle) | - | 10 | - | µA | ENS160 standby |
+| LDO Quiescent Current | - | 40 | - | µA | ME6211 |
+
+### 3.3 LDO Selection (1.8V for ENS160 Core)
+
+| Part | Manufacturer | Output | Iq | Package | Cost | Notes |
+|------|--------------|--------|-----|---------|------|-------|
+| **ME6211A18M3G** | Microne | 300mA | 40µA | SOT-23-3 | $0.02 | **Recommended** |
+| XC6206P182MR | Torex | 200mA | 1µA | SOT-23 | $0.03 | Ultra-low Iq alternative |
+| AP2112K-1.8 | Diodes Inc | 600mA | 55µA | SOT-23-5 | $0.04 | Higher headroom |
+| AMS1117-1.8 | AMS | 1A | 5mA | SOT-223 | $0.05 | Overkill, high Iq |
+
+**Recommendation:** ME6211A18M3G - widely available, low cost, proven in ESP32 designs.
+
+### 3.4 I2C Interface
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | I2C Address | 0x52 or 0x53 | Selectable via ADDR pin |
 | I2C Speed | Standard (100kHz) or Fast (400kHz) | |
-| Pull-ups | External required | On RS-1 host (shared bus) |
-| SDA/SCL Voltage | 1.8V or 3.3V | Level shifter if needed |
+| Logic Levels | **3.3V** | Direct connection to ESP32 I2C |
+| Pull-ups | External required | 4.7kΩ on RS-1 host (shared bus) |
+| Level Shifter | **Not required** | VDDIO supports 3.3V |
 
-### 3.3 Interrupt Pin (Optional)
+**I2C Bus Compatibility:** The IAQ module shares the RS-1 I2C bus with AHT20 (0x38) and LTR-303 (0x29). No bus splitter required—ENS160 address (0x52/0x53) does not conflict.
+
+### 3.5 Interrupt Pin (Optional)
 
 | Parameter | Value |
 |-----------|-------|
 | INT Function | Data ready / threshold alert |
-| Logic Level | Active low, open-drain |
+| Logic Level | Active low, open-drain (3.3V tolerant) |
 | Required | No (polling supported) |
 
-### 3.4 Pin Assignment
+### 3.6 Pin Assignment
 
 | Pin # | Name | Direction | Description |
 |-------|------|-----------|-------------|
-| P1 | VCC | Power In | 3.3V supply from host |
+| P1 | VCC | Power In | 3.3V supply from host → LDO + VDDIO |
 | P2 | GND | Power | Ground reference |
-| P3 | SDA | Bidirectional | I2C data |
-| P4 | SCL | Input | I2C clock |
+| P3 | SDA | Bidirectional | I2C data (3.3V logic) |
+| P4 | SCL | Input | I2C clock (3.3V logic) |
 | P5 | INT | Output (optional) | Interrupt / not connected |
 
 ---
@@ -237,12 +273,15 @@ The RS-1 host provides the mating interface:
 | Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
 |------|--------------|-------------|-------------|-----|-----------|
 | U1 | ScioSense | ENS160-BGLM | TVOC/eCO2 Sensor, DFN-10 | 1 | $4.60 |
-| U2 | TBD | TBD | LDO 3.3V→1.8V, SOT-23-5 (if needed) | 1 | $0.03 |
+| U2 | Microne | ME6211A18M3G | LDO 1.8V 300mA, SOT-23-3 | 1 | $0.02 |
 | P1-P5 | Mill-Max | 0906-2-15-20-75-14-11-0 | Pogo Pin, Spring-Loaded | 5 | $0.08 ea |
 | M1-M2 | Generic | N35 3mm×2mm | Neodymium Magnet, Disc | 2 | $0.02 ea |
-| C1 | Samsung | CL05A104KA5NNNC | MLCC, 100nF, 10V, 0402 | 1 | $0.01 |
-| C2 | Samsung | CL05A106MQ5NUNC | MLCC, 10µF, 6.3V, 0402 | 1 | $0.02 |
+| C1 | Samsung | CL05A104KA5NNNC | MLCC, 100nF, 10V, 0402 (LDO input) | 1 | $0.01 |
+| C2 | Samsung | CL05A106MQ5NUNC | MLCC, 10µF, 6.3V, 0402 (LDO output) | 1 | $0.02 |
+| C3 | Samsung | CL05A104KA5NNNC | MLCC, 100nF, 10V, 0402 (ENS160 decoupling) | 1 | $0.01 |
 | PCB | JLCPCB | - | 2-Layer, 15×20mm, 0.8mm | 1 | $0.10 |
+
+**Note:** U2 LDO powers ENS160 VDD (1.8V core). ENS160 VDDIO connects directly to 3.3V VCC for I2C compatibility.
 
 ### 4.2 BOM Cost Summary
 
@@ -251,7 +290,8 @@ The RS-1 host provides the mating interface:
 | ENS160 Sensor | $4.60 |
 | Pogo Pins (5×) | $0.40 |
 | Magnets (2×) | $0.04 |
-| LDO + Passives | $0.06 |
+| LDO (ME6211A18M3G) | $0.02 |
+| Capacitors (3×) | $0.04 |
 | PCB | $0.10 |
 | **Total Module BOM** | **~$5.20** |
 

@@ -220,9 +220,11 @@ The IAQ module is a **separate, discrete product** with its own 2-layer PCBA. Po
 |------|-------------|-------------|----------|-----|-----------|
 | TVOC/CO2 Sensor | ScioSense | ENS160-BGLM | Air Quality (I2C) | 1 | ~$4.60 |
 | Pogo Pins | Mill-Max | 0906-2-15-20-75-14-11-0 | Spring-Loaded Interface Pins | 5 | ~$0.40 |
-| Neodymium Magnets | Generic | N35 3mm×2mm disc | Magnetic retention | 2 | ~$0.08 |
-| LDO (1.8V) | TBD | TBD | ENS160 power regulation | 1 | ~$0.05 |
-| Passives | - | - | Decoupling capacitors | - | ~$0.07 |
+| Neodymium Magnets | Generic | N35 3mm×2mm disc | Magnetic retention | 2 | ~$0.04 |
+| LDO (1.8V) | Microne | ME6211A18M3G | ENS160 VDD (1.8V core) | 1 | ~$0.02 |
+| Passives | Samsung | CL05A series | Input/output/decoupling caps (3×) | 3 | ~$0.04 |
+
+**Power Architecture:** ENS160 has separate VDD (1.8V) and VDDIO (1.71-3.6V) pins. LDO provides 1.8V for core; VDDIO connects directly to 3.3V VCC for I2C compatibility. **No level shifter required.**
 
 **Mechanical:** Magnet snap-on attachment. RS-1 enclosure has cutouts for pogo pin access.
 
