@@ -22,19 +22,19 @@ RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy 
 
 ### 2.1 In Scope (MVP)
 
-- Single LD2450 radar with ESP32-C3-MINI-1
+- Single LD2450 radar with ESP32-WROOM-32E
 - Unlimited software-defined zones
 - ESPHome Native API compatibility
 - Mobile app onboarding (QR + Wi-Fi setup)
 - Manual zone editor (drag/resize/rename)
 - Cloud-push OTA with local fallback
 - Local-first operation (no cloud required for core function)
+- PoE add-on option (via RMII PHY)
 
 ### 2.2 Out of Scope (MVP)
 
 - Camera-based detection (RS-Vision future product)
 - Enterprise fleet management
-- PoE variant
 - AR-assisted room scanning (post-beta)
 - Consumer retail packaging
 
@@ -46,19 +46,20 @@ RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy 
 
 | Component | Specification | Notes |
 |-----------|---------------|-------|
-| **MCU** | ESP32-C3-MINI-1 | RISC-V, 160MHz, 4MB Flash, 400KB SRAM |
+| **MCU** | ESP32-WROOM-32E-N8 + CH340N | Xtensa LX6 dual-core, 240MHz, 8MB Flash, 520KB SRAM |
 | **Radar** | Hi-Link LD2450 | 24GHz FMCW, 3 targets, 6m range, 120° H × 60° V |
 | **Interface** | UART | 256000 baud |
-| **Power** | USB-C, 5V | PoE variant out of scope |
-| **Indicator** | Status LED | TBD: color, behavior |
+| **Power** | USB-C, 5V | PoE add-on available |
+| **Indicator** | Status LED | WS2812 RGB |
 | **Enclosure** | Wall/ceiling mount | Form factor TBD |
 
 ### 3.2 Hardware Constraints
 
-- Single-core operation (ESP32-C3 is single-core RISC-V)
+- Dual-core operation (ESP32-WROOM-32E is dual-core Xtensa LX6)
 - 200KB heap budget for application
-- 4MB flash: ~1.5MB per OTA partition, 16KB NVS, 64KB logs
+- 8MB flash: ~3.5MB per OTA partition, 16KB NVS, 64KB logs
 - No hardware security module (software key storage only)
+- Requires CH340N USB-UART bridge (no native USB)
 
 ---
 
@@ -118,7 +119,7 @@ RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy 
 
 | Requirement | Specification |
 |-------------|---------------|
-| Secure boot | ESP32-C3 Secure Boot V2 |
+| Secure boot | ESP32 Secure Boot V2 |
 | Flash encryption | Optional for MVP |
 | Transport | TLS 1.2+ for MQTT and HTTPS |
 | API auth | Noise protocol PSK or legacy password |
@@ -296,9 +297,9 @@ See `docs/contracts/PROTOCOL_PROVISIONING.md` for detailed provisioning protocol
 | Constraint | Impact |
 |------------|--------|
 | Single radar | Cannot detect fully stationary occupants reliably |
-| ESP32-C3 single-core | No parallel processing, careful task scheduling required |
-| 4MB flash | OTA partition size limited to ~1.5MB |
+| 8MB flash | OTA partition size ~3.5MB each (dual partitions) |
 | eFuse anti-rollback | Maximum 32 security-critical updates over device lifetime |
+| No native USB | Requires CH340N USB-UART bridge |
 
 ### 9.2 Assumptions
 

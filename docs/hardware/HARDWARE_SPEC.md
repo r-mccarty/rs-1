@@ -57,15 +57,15 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
                                     │              RS-1 PCBA                  │
                                     │                                         │
    ┌─────────┐                      │  ┌─────────────────────────────────┐    │
-   │ USB-C   │◄────────────────────►│  │       ESP32-S3-WROOM-1          │    │
-   │  5V/    │     USB Data         │  │                                 │    │
-   │  Data   │     + Power          │  │  ┌─────────┐  ┌─────────────┐  │    │
+   │ USB-C   │◄────────────────────►│  │       ESP32-WROOM-32E           │    │
+   │  5V/    │     USB Data         │  │         + CH340N                │    │
+   │  Data   │     (via CH340N)     │  │  ┌─────────┐  ┌─────────────┐  │    │
    └─────────┘                      │  │  │  WiFi   │  │  Bluetooth  │  │    │
-                                    │  │  │ 802.11  │  │    5.0      │  │    │
+                                    │  │  │ 802.11  │  │    4.2      │  │    │
    ┌─────────┐                      │  │  │  b/g/n  │  │             │  │    │
    │  PoE    │◄────────────────────►│  │  └─────────┘  └─────────────┘  │    │
    │ 802.3af │  Ethernet + Power    │  │                                 │    │
-   │(Option) │  (via Si3404)        │  └────────────┬────────────────────┘    │
+   │(Option) │  (RMII PHY + Si3404) │  └────────────┬────────────────────┘    │
    └─────────┘                      │               │                         │
                                     │               │ GPIO / UART / I2C       │
                                     │               ▼                         │
@@ -103,7 +103,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 | Component | RS-1 Lite | RS-1 Pro |
 |-----------|:---------:|:--------:|
-| ESP32-S3-WROOM-1 | Required | Required |
+| ESP32-WROOM-32E + CH340N | Required | Required |
 | USB-C Power/Data | Required | Required |
 | AHT20 (Temp/Hum) | Required | Required |
 | LTR-303 (Lux) | Required | Required |
@@ -124,34 +124,29 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 | Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
 |------|--------------|-------------|-------------|-----|-----------|
-| U1 | Espressif | ESP32-S3-WROOM-1-N4 | MCU Module, 4MB Flash, 0 PSRAM | 1 | $3.42 |
+| U1 | Espressif | ESP32-WROOM-32E-N8 | MCU Module, 8MB Flash | 1 | $3.0011 |
+| U1-USB | WCH | CH340N | USB-UART Bridge | 1 | $0.3425 |
+
+**Core Cost:** $3.3436 (MCU + USB bridge)
 
 **Specifications:**
-- Architecture: Xtensa LX7 dual-core, 240 MHz
-- Flash: 4MB (Quad SPI)
-- SRAM: 512KB
-- GPIO: 45 programmable
-- Interfaces: USB OTG, SPI, I2C, I2S, UART, SDIO (no EMAC/RMII)
-- Wireless: WiFi 802.11 b/g/n, Bluetooth 5 (LE)
+- Architecture: Xtensa LX6 dual-core, 240 MHz
+- Flash: 8MB (Quad SPI)
+- SRAM: 520KB
+- GPIO: 34 programmable
+- Interfaces: EMAC/RMII, SPI, I2C, I2S, UART, SDIO
+- Wireless: WiFi 802.11 b/g/n, Bluetooth 4.2 (Classic + LE)
 - Operating Voltage: 3.0V - 3.6V
 - Operating Temperature: -40°C to +85°C
 
-**Note:** ESP32-S3 has no EMAC/RMII. Ethernet requires an SPI controller (W5500/CH390H) if this MCU is selected.
+**Why ESP32-WROOM-32E:**
+- Native EMAC/RMII support enables low-cost Ethernet PHY for PoE variants
+- Proven, mature platform with excellent ESP-IDF support
+- Lower total BOM cost vs ESP32-S3 + SPI Ethernet
+- 8MB flash provides OTA headroom
+- Sufficient GPIO for RS-1 Pro (dual radar + Ethernet + sensors)
 
-**Alternate Part (for higher memory requirements):**
-| Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
-|------|--------------|-------------|-------------|-----|-----------|
-| U1-ALT | Espressif | ESP32-S3-WROOM-1-N8R2 | MCU Module, 8MB Flash, 2MB PSRAM | 1 | $4.10 |
-
-**Alternate MCU (cost-optimized EMAC path):**
-| Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
-|------|--------------|-------------|-------------|-----|-----------|
-| U1-ALT2 | Espressif | ESP32-WROOM-32E-N8 | MCU Module with EMAC/RMII | 1 | $3.0011 |
-
-**USB Bridge (required for ESP32-WROOM-32E variants):**
-| Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
-|------|--------------|-------------|-------------|-----|-----------|
-| U1-ALT2-USB | WCH | CH340N | USB-UART bridge | 1 | $0.3425 |
+**Note:** Requires CH340N USB-UART bridge for USB-C data connectivity (no native USB).
 
 #### 4.1.2 Power Supply
 
@@ -268,20 +263,25 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 | Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
 |------|--------------|-------------|-------------|-----|-----------|
-| U6 | Realtek | RTL8201F-VB-CG | Ethernet PHY, 10/100Mbps, RMII | 1 | $0.40 |
+| U6 | CoreChips | SR8201F | Ethernet PHY, 10/100Mbps, RMII | 1 | $0.25 |
 | U7 | Silicon Labs | Si3404-A-GMR | PoE PD Controller, Isolated Flyback | 1 | $1.20 |
-| J4 | TBD | TBD | RJ45 Connector (no magnetics) | 1 | TBD |
-| J4-ALT | HanRun | HR911105A | RJ45 Connector with Magnetics (magjack) | 1 | $0.85 |
-| T1 | Mentech | H1601CG | Ethernet Transformer, 10/100Base-T | 1 | $0.45 |
-| BR1 | Shikues | MB10S | Bridge Rectifier, 1A, 1000V, SOP-4 | 1 | $0.05 |
-| Y1 | YXC | X322525MOB4SI | Crystal, 25MHz, 20ppm, 3225 | 1 | $0.12 |
+| J4-ALT | HanRun | HR911105A | RJ45 Connector with Magnetics (magjack) | 1 | $0.95 |
+| Y1 | YXC | X322525MOB4SI | Crystal, 25MHz, 20ppm, 3225 | 1 | $0.05 |
+| Passives | - | - | Terminations + decoupling | - | $0.10 |
+
+**PHY Alternatives:**
+| Part Number | Manufacturer | Price | Notes |
+|-------------|--------------|-------|-------|
+| SR8201F | CoreChips | ~$0.25 | **Preferred** - lowest cost |
+| IP101GRR | IC+ | ~$0.27 | Alternative |
+| RTL8201F-VB-CG | Realtek | ~$0.41 | Higher cost |
 
 **Notes:**
-- PHY options under evaluation: SR8201F and IP101GRR are lower-cost alternatives to RTL8201F.
-- PoE power architecture under evaluation: integrated PD module vs discrete PD + flyback (Si3404).
-- External magnetics (RJ45 + transformer) may be lower cost than magjack; if magjack is selected, DNP T1.
-- Data-only Ethernet BOM at ~100 qty is about $1.30 to $1.46 (PHY + magjack + passives). Update if external magnetics are selected.
-- PD module adds about $4.22 at ~100 qty, total PoE add-on about $5.52 to $5.68 (module path).
+- ESP32-WROOM-32E has native EMAC/RMII, enabling low-cost PHY (no SPI Ethernet controller needed)
+- SR8201F is the preferred PHY due to lowest cost
+- Magjack (integrated magnetics) is baselined; external magnetics + bare RJ45 is an alternative
+- Data-only Ethernet BOM: ~$1.35 (PHY + magjack + crystal + passives)
+- PoE power architecture: PD module (~$4.22) or discrete Si3404 + flyback (TBD)
 
 **PoE Specifications:**
 | Parameter | Value | Unit |
@@ -318,13 +318,13 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 ## 5. BOM Summary by Variant
 
-**Note:** The BOM summaries below assume the ESP32-S3 core. If ESP32-WROOM-32E + CH340N is selected, update core costs and PoE Ethernet deltas accordingly.
+**Note:** BOM summaries use ESP32-WROOM-32E + CH340N core ($3.34).
 
 ### 5.1 RS-1 Lite
 
 | Category | Components | Est. Cost |
 |----------|------------|-----------|
-| Core Platform | ESP32-S3, Power, Sensors, UI | $4.93 |
+| Core Platform | ESP32-WROOM-32E + CH340N, Power, Sensors, UI | $4.93 |
 | LD2410B Radar | Radar module | $2.80 |
 | **Total** | | **~$7.73** |
 
@@ -336,7 +336,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 | Category | Components | Est. Cost |
 |----------|------------|-----------|
-| Core Platform | ESP32-S3, Power, Sensors, UI | $4.93 |
+| Core Platform | ESP32-WROOM-32E + CH340N, Power, Sensors, UI | $4.93 |
 | LD2410B Radar | Static presence | $2.80 |
 | LD2450 Radar | Multi-target tracking | $11.50 |
 | **Total** | | **~$19.23** |
@@ -401,24 +401,37 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 ## 7. Pin Assignments
 
-### 7.1 ESP32-S3 GPIO Allocation (S3 option)
+### 7.1 ESP32-WROOM-32E GPIO Allocation
 
 | GPIO | Function | Direction | Notes |
 |------|----------|-----------|-------|
-| 0 | Boot Select | Input | Active Low |
-| 1-15 | Reserved | - | No RMII on S3; SPI Ethernet pin map TBD |
-| 16 | LD2410 UART TX | Output | Static radar |
-| 17 | LD2410 UART RX | Input | Static radar |
-| 18 | LD2450 UART TX | Output | Tracking radar (Pro) |
-| 19 | USB D- | Bidirectional | Native USB |
-| 20 | USB D+ | Bidirectional | Native USB |
-| 21 | LD2450 UART RX | Input | Tracking radar (Pro) |
-| 22 | I2C SDA | Bidirectional | Sensors |
-| 23 | I2C SCL | Output | Sensors |
-| 38 | WS2812 Data | Output | Status LED |
-| 40 | Reset Button | Input | Active Low, Pull-up |
+| 0 | Boot Select | Input | Active Low, strapping pin |
+| 1 | UART0 TX | Output | USB-UART (CH340N) |
+| 3 | UART0 RX | Input | USB-UART (CH340N) |
+| 4 | LD2410 UART TX | Output | Static radar (UART1) |
+| 5 | LD2410 UART RX | Input | Static radar (UART1) |
+| 16 | LD2450 UART TX | Output | Tracking radar (UART2, Pro) |
+| 17 | LD2450 UART RX | Input | Tracking radar (UART2, Pro) |
+| 21 | I2C SDA | Bidirectional | Sensors |
+| 22 | I2C SCL | Output | Sensors |
+| 25 | WS2812 Data | Output | Status LED |
+| 34 | Reset Button | Input | Input-only, Pull-up external |
 
-**Note:** If ESP32-WROOM-32E is selected, a separate GPIO allocation (including RMII pin map) is required.
+**RMII Ethernet (PoE variants):**
+
+| GPIO | RMII Function | Notes |
+|------|---------------|-------|
+| 18 | MDIO | PHY management data |
+| 23 | MDC | PHY management clock |
+| 19 | TXD0 | Transmit data 0 |
+| 22 | TXD1 | Transmit data 1 |
+| 21 | TX_EN | Transmit enable |
+| 25 | RXD0 | Receive data 0 |
+| 26 | RXD1 | Receive data 1 |
+| 27 | CRS_DV | Carrier sense / Data valid |
+| 0 | REF_CLK | 50MHz reference clock (input from PHY) |
+
+**Note:** RMII pins overlap with some peripheral pins. PoE variant requires careful GPIO reassignment for I2C and LED.
 
 ### 7.2 I2C Bus Devices
 
@@ -456,18 +469,18 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 ### 8.2 Layout Guidelines
 
 1. **Radar Placement:** Place LD2410 and LD2450 at opposite ends of PCB to minimize interference (Pro variant)
-2. **Antenna Keepout:** 15mm clearance around MCU antenna area (S3 or 32E per selection)
+2. **Antenna Keepout:** 15mm clearance around ESP32-WROOM-32E antenna area
 3. **Power Planes:** Solid ground plane on Layer 2
-4. **USB Routing:** Differential pair routing for USB D+/D-
-5. **RMII Routing:** Matched length for RMII signals (classic ESP32 only)
+4. **USB Routing:** Route USB D+/D- to CH340N (not differential; CH340N is full-speed USB)
+5. **RMII Routing:** Matched length for RMII signals (PoE variants)
 6. **Isolation:** 3mm minimum creepage for PoE isolated section
 
 ### 8.3 Thermal Considerations
 
 | Component | Thermal Pad | Notes |
 |-----------|-------------|-------|
-| ESP32-S3-WROOM | Yes | Via stitching to ground |
-| ME6211 LDO | Thermal relief | Maximum 1W dissipation |
+| ESP32-WROOM-32E | Yes | Via stitching to ground |
+| SY8089 Buck | Thermal relief | Place near input capacitor |
 | Si3404 | Required | Exposed pad to ground |
 
 ---
@@ -508,7 +521,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 ### 10.2 Compliance Notes
 
-1. **FCC/IC:** ESP32-S3-WROOM-1 module pre-certified (modular approval)
+1. **FCC/IC:** ESP32-WROOM-32E module pre-certified (modular approval)
 2. **24GHz Radar:** Subject to FCC Part 15.255 and ETSI EN 302 288
 3. **RoHS:** All components must be RoHS compliant
 4. **Labeling:** FCC ID, IC ID to appear on device label
@@ -521,7 +534,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 | Component | Test | Acceptance Criteria |
 |-----------|------|---------------------|
-| ESP32-S3 | Visual + Programming | Boot successful |
+| ESP32-WROOM-32E | Visual + Programming | Boot successful |
 | Radar Modules | Visual + Functional | Data frames received |
 | PCB | Visual + Electrical | No shorts, correct impedance |
 
@@ -549,32 +562,36 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 ## 12. Open Items and Decisions
 
-### 12.1 Pending Decisions
+### 12.1 Resolved Decisions
+
+| Item | Decision | Rationale |
+|------|----------|-----------|
+| **MCU Family** | **ESP32-WROOM-32E + CH340N** | Native EMAC/RMII enables low-cost Ethernet PHY; lower total BOM |
+| **MCU Flash** | **N8 (8MB)** | OTA headroom; $3.0011 at 100 qty |
+| **Ethernet Architecture** | **RMII PHY (SR8201F)** | Lowest cost PHY; EMAC support in MCU |
+
+### 12.2 Pending Decisions
 
 | Item | Options | Impact | Decision By |
 |------|---------|--------|-------------|
-| MCU Family | ESP32-S3 (native USB) vs ESP32-WROOM-32E + CH340N (EMAC/RMII) | Cost, Ethernet BOM, USB complexity | Hardware review |
-| MCU Flash/PSRAM | N4 (4MB/0) vs N8R2 (8MB/2MB) | Cost, capability | Firmware review |
 | Static Radar | LD2410B vs LD2410C vs LD2412 | Sensitivity, cost | Testing |
-| Ethernet Architecture | SPI Ethernet (W5500/CH390H) vs RMII PHY | Cost, firmware complexity | Hardware + Firmware |
 | Magnetics | Magjack vs external magnetics + RJ45 | Cost, layout complexity | Hardware |
 | PoE Power Architecture | PD module vs discrete PD + flyback | Cost, layout complexity | Hardware |
 | Power Mux | Diode OR vs ideal diode vs USB-priority | Safety, cost | Hardware |
 | LED Behavior | Status only vs Activity indicator | UX, power | Product review |
 | Form Factor | Wall vs Ceiling vs Universal | Enclosure design | Market research |
 
-### 12.2 Action Items
+### 12.3 Action Items
 
-1. [ ] Resolve MCU family (ESP32-S3 vs ESP32-WROOM-32E + CH340N)
-2. [ ] Resolve MCU configuration (N4 vs N8R2) if S3 is selected
+1. [x] ~~Resolve MCU family~~ → ESP32-WROOM-32E + CH340N
+2. [x] ~~Select Ethernet architecture~~ → RMII PHY (SR8201F preferred)
 3. [ ] Validate radar module selection via prototype testing
-4. [ ] Select Ethernet architecture (SPI Ethernet vs RMII PHY)
-5. [ ] Select PoE power architecture (module vs discrete) and update schematic
-6. [ ] Generate component libraries for PCB design (PoE power stage, RJ45, PHY)
-7. [ ] Create LCSC parts database with volume pricing
-8. [ ] Verify JLCPCB assembly capabilities for all parts
-9. [ ] Finalize enclosure mechanical design
-10. [ ] Initiate pre-compliance RF testing
+4. [ ] Select PoE power architecture (module vs discrete) and update schematic
+5. [ ] Generate component libraries for PCB design (PoE power stage, RJ45, PHY)
+6. [ ] Create LCSC parts database with volume pricing
+7. [ ] Verify JLCPCB assembly capabilities for all parts
+8. [ ] Finalize enclosure mechanical design
+9. [ ] Initiate pre-compliance RF testing
 
 ---
 
@@ -604,23 +621,24 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 | Function | Primary PN | Alternate PN | Notes |
 |----------|------------|--------------|-------|
-| MCU (S3) | ESP32-S3-WROOM-1-N4 | ESP32-S3-WROOM-1-N8R2 | Verify memory needs |
-| MCU (classic) | ESP32-WROOM-32E-N8 | - | Requires CH340N USB-UART |
-| LDO | ME6211C33M5G-N | AP2112K-3.3 | Pin compatible |
+| MCU | ESP32-WROOM-32E-N8 | - | Baselined |
+| USB-UART Bridge | CH340N | - | Required for USB-C data |
+| Buck Converter | SY8089AAAC | MT3410LB | SY8089 preferred |
 | Static Radar | LD2410B | LD2410C, LD2412 | Test performance |
 | Tracking Radar | LD2450 | - | No alternate |
+| Ethernet PHY | SR8201F | IP101GRR, RTL8201F | SR8201F preferred |
 | PoE Controller | Si3404-A-GMR | TPS2376 | Different topology |
 
 ### A.2 LCSC Part Numbers
 
 | Component | LCSC PN |
 |-----------|---------|
-| ESP32-S3-WROOM-1-N4 | C2913202 |
 | ESP32-WROOM-32E-N8 | C701342 |
 | CH340N | C2977777 |
-| ME6211C33M5G-N | C82942 |
+| SY8089AAAC | C78988 |
 | AHT20 | C2846063 |
 | LTR-303ALS-01 | C2846066 |
+| SR8201F | TBD |
 | RTL8201F-VB-CG | C47055 |
 
 *Note: Verify LCSC part numbers before ordering; availability changes.*

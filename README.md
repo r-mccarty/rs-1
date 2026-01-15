@@ -56,14 +56,14 @@ This repo covers the full family; the hardware docs define population options an
 
 | Component | Specification |
 |-----------|---------------|
-| **MCU** | ESP32-S3-WROOM-1 or ESP32-WROOM-32E (under evaluation) |
+| **MCU** | ESP32-WROOM-32E + CH340N USB-UART Bridge |
 | **Radar** | LD2410 (Lite), or LD2410 + LD2450 dual fusion (Pro) |
 | **Detection Range** | Up to 6 meters |
 | **Field of View** | 120° horizontal, 60° vertical (LD2450) |
 | **Targets Tracked** | Up to 3 simultaneously (Pro only) |
 | **Update Rate** | 33 Hz (30ms frames, LD2450) |
-| **Connectivity** | Wi-Fi 802.11 b/g/n; optional Ethernet (PoE variants) |
-| **Power** | USB-C 5V; optional PoE |
+| **Connectivity** | Wi-Fi 802.11 b/g/n; optional Ethernet via RMII PHY (PoE variants) |
+| **Power** | USB-C 5V; optional PoE (802.3af) |
 
 ---
 
@@ -192,7 +192,7 @@ Firmware and cloud communicate via MQTT with JSON payloads. Schemas in [docs/con
 
 - ESP-IDF 5.x
 - Python 3.9+
-- USB-C cable or USB-to-Serial adapter (depends on MCU choice)
+- USB-C cable (CH340N USB-UART bridge on-board)
 
 ### Building (Coming Soon)
 

@@ -1,20 +1,18 @@
 # RS-1 Ethernet Options Follow-Up (RFD-002)
 
-**Status:** Draft
-**Date:** 2026-01-XX
+**Status:** Resolved
+**Date:** 2026-01-15
 **Owner:** Hardware + Firmware
 
 ---
 
 ## 1. Context
 
-RFD-002 and its response identified Ethernet-related issues in the current RS-1 hardware spec:
+RFD-002 and its response identified Ethernet-related issues in the original hardware spec. The key finding was that **ESP32-S3 has no EMAC/RMII**, requiring SPI Ethernet for PoE.
 
-- **ESP32-S3 has no EMAC/RMII.** The RTL8201F RMII PHY shown in `docs/hardware/HARDWARE_SPEC.md` and `docs/hardware/RS-1_Unified_BOM.md` will not work with ESP32-S3.
-- **PoE + USB power muxing is missing.** The Si3404 provides isolation but does not prevent back-powering between USB VBUS and PoE 5V.
-- **Doc conflict:** `docs/hardware/hardware-concept-evolution.md` states ESP32-S3 supports RMII PHY, which is superseded by RFD-002.
+**Resolution:** The MCU has been changed to **ESP32-WROOM-32E**, which has native EMAC/RMII support, enabling low-cost RMII PHY for Ethernet.
 
-This document focuses on Ethernet controller options and firmware implications.
+This document is retained for historical context and to document the options that were considered.
 
 ---
 
@@ -106,45 +104,29 @@ This keeps modules transport-agnostic and avoids conditional logic in each modul
 
 ---
 
-## 6. MCU Variant Strategy (PoE vs USB-C)
+## 6. MCU Variant Strategy (RESOLVED)
 
-### Option A: Single MCU (ESP32-S3) + SPI Ethernet
+### Final Decision: ESP32-WROOM-32E + CH340N + RMII PHY
 
-**Pros**
-- Single PCBA and firmware lineage.
-- No USB-UART bridge needed.
-- Aligns with existing hardware concept evolution strategy.
+**Selected:** Option B - Single MCU (ESP32-WROOM-32E) + USB-UART + RMII PHY
 
-**Cons**
-- Higher Ethernet BOM vs RMII PHY.
+**Rationale:**
+- Single PCBA across all variants (USB-C and PoE)
+- RMII PHY (SR8201F at ~$0.25) is significantly cheaper than SPI Ethernet (W5500 at ~$1.77)
+- Native EMAC/RMII in ESP32-WROOM-32E eliminates need for SPI Ethernet controller
+- Total PoE Ethernet BOM: ~$1.35 (vs ~$2.70 for SPI Ethernet)
 
-### Option B: Single MCU (ESP32-WROOM-32E) + USB-UART + RMII PHY
+**Trade-offs accepted:**
+- Requires CH340N USB-UART bridge ($0.34) on all variants
+- Bluetooth 4.2 instead of 5 (acceptable for this product)
 
-**Pros**
-- Single PCBA across PoE and USB-C variants.
-- RMII PHY (RTL8201F) lowers PoE BOM vs SPI Ethernet.
-- Classic ESP32 has EMAC and RMII support.
+### Options Considered (Historical)
 
-**Cons**
-- Requires USB-UART bridge on all variants.
-- Adds BOM cost and board area for the bridge.
-- Loses ESP32-S3 native USB and newer features.
-
-**Conclusion:** This can be cheaper than ESP32-S3 + SPI Ethernet if the USB-UART bridge cost is lower than the W5500 delta and if the classic ESP32 meets performance and GPIO needs.
-
-### Option C: Split MCU (ESP32-WROOM-32E for PoE, ESP32-S3 for USB-C)
-
-**Pros**
-- RMII PHY (RTL8201F) lowers PoE BOM.
-- Classic ESP32 has EMAC and RMII.
-
-**Cons**
-- Likely two PCB layouts (different module footprint and routing).
-- Requires USB-UART bridge on the ESP32-WROOM-32E SKU.
-- Separate firmware build/test matrix (different SoC features and peripherals).
-- Increases manufacturing and QA complexity.
-
-**Conclusion:** This split only makes sense if firmware can stay largely common and the added PCB complexity is acceptable. Otherwise, the single-PCBA strategy remains the safer path.
+| Option | MCU | Ethernet | PoE BOM | Status |
+|--------|-----|----------|---------|--------|
+| A | ESP32-S3 | SPI (W5500) | ~$2.70 | Not selected |
+| **B** | **ESP32-WROOM-32E** | **RMII (SR8201F)** | **~$1.35** | **Selected** |
+| C | Split MCUs | RMII (32E), none (S3) | N/A | Not selected |
 
 ---
 
@@ -185,9 +167,9 @@ This keeps modules transport-agnostic and avoids conditional logic in each modul
 
 ---
 
-## 8. Follow-Up Actions
+## 8. Follow-Up Actions (RESOLVED)
 
-1. Choose SPI Ethernet controller (W5500 vs CH390H).
-2. Update `docs/hardware/HARDWARE_SPEC.md` and `docs/hardware/RS-1_Unified_BOM.md` to remove RMII PHY assumptions if SPI is selected.
-3. Update firmware assumptions in `docs/firmware/HARDWAREOS_MODULE_NATIVE_API.md` (A4) and add Ethernet transport notes in M07/M09.
-4. Validate power mux design for USB + PoE per RFD-002.
+1. [x] ~~Choose Ethernet architecture~~ → RMII PHY (SR8201F) with ESP32-WROOM-32E
+2. [x] ~~Update HARDWARE_SPEC.md and RS-1_Unified_BOM.md~~ → Updated for ESP32-WROOM-32E + RMII
+3. [ ] Update firmware assumptions in `docs/firmware/HARDWAREOS_MODULE_NATIVE_API.md` (A4) and add Ethernet transport notes
+4. [ ] Validate power mux design for USB + PoE per RFD-002

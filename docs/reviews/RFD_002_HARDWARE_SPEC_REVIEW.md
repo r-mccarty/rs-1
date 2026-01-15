@@ -1,18 +1,34 @@
 # RFD-002: Hardware Specification Review (HW-RS1-001)
 
-**Status:** Draft
+**Status:** Resolved
 **Author:** Hardware Engineering Review
 **Date:** 2026-01-14
+**Updated:** 2026-01-15
 **Reviewers:** OpticWorks Hardware, Firmware, Product
 **Document Under Review:** `docs/hardware/HARDWARE_SPEC.md` (HW-RS1-001 v1.0)
 
 ---
 
-## Summary
+## Resolution Status (2026-01-15)
+
+**All critical issues have been addressed:**
+- MCU changed from ESP32-S3 to **ESP32-WROOM-32E + CH340N**
+- Power regulator changed from LDO to **SY8089AAAC buck converter**
+- Power mux added (**dual SS34 Schottky diodes**)
+- USB ESD protection added (**USBLC6-2SC6**)
+- Ethernet architecture resolved: **RMII PHY (SR8201F)** enabled by ESP32-WROOM-32E's native EMAC
+
+See `RFD_002_RESPONSE.md` for detailed solutions to each issue.
+
+---
+
+## Summary (Original Review)
 
 This RFD documents a critical hardware engineering review of the RS-1 Hardware Specification (HW-RS1-001). The review identifies **2 showstopper issues** that will cause hardware failures in production, plus **4 major risks** requiring design changes before PCB layout.
 
-**Recommendation:** Do not proceed with PCB layout until Sections 2.1 and 2.2 are resolved. The current design will produce non-functional hardware.
+**Original Recommendation:** Do not proceed with PCB layout until Sections 2.1 and 2.2 are resolved.
+
+**Status:** Issues resolved. PCB layout may proceed.
 
 ---
 

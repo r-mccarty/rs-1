@@ -180,91 +180,62 @@ This uses the existing AO3401A PMOS for PoE enable control.
 
 ---
 
-## 3. ESP32-S3 Ethernet Architecture (CRITICAL FINDING)
+## 3. ESP32 Ethernet Architecture (RESOLVED)
 
-### Problem Discovery
+### Problem Discovery (Historical)
 
-**The ESP32-S3 does NOT have an internal EMAC or RMII interface.** This was not identified in the original hardware spec.
+**The ESP32-S3 does NOT have an internal EMAC or RMII interface.** This finding led to re-evaluation of the MCU choice.
 
 | ESP32 Variant | Internal EMAC | RMII Support |
 |---------------|---------------|--------------|
-| ESP32 (Classic) | Yes | Yes |
+| **ESP32 (Classic)** | **Yes** | **Yes** |
 | ESP32-S2 | No | No |
-| **ESP32-S3** | **No** | **No** |
+| ESP32-S3 | No | No |
 | ESP32-C3 | No | No |
 | ESP32-P4 | Yes (future) | Yes |
 
 **Source:** [ESP-IDF Ethernet Documentation](https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32s3/api-reference/network/esp_eth.html)
 
-### Impact on Current Design
+### Final Decision: ESP32-WROOM-32E + RMII PHY
 
-The specified PoE design with RTL8201F PHY ($0.40) **will not work** with ESP32-S3:
-- RTL8201F is an RMII PHY - requires EMAC on MCU side
-- ESP32-S3 has no EMAC hardware
-- All GPIO pin mapping for RMII (GPIO 1-15) is irrelevant
+**The ESP32-WROOM-32E has been selected as the baselined MCU.** This enables:
+- Native EMAC/RMII support
+- Low-cost Ethernet PHY (SR8201F at ~$0.25)
+- Single PCBA strategy across all variants
 
-### Revised PoE Options
-
-#### Option A: W5500 SPI Ethernet Controller (Recommended)
+### PoE Implementation (Baselined)
 
 | Parameter | Specification |
 |-----------|---------------|
-| Part Number | W5500 |
-| Manufacturer | WIZnet |
-| LCSC Part # | [C32843](https://lcsc.com/product-detail/Ethernet-ICs_WIZNET-W5500_C32843.html) |
-| Interface | SPI (up to 80MHz) |
-| Package | LQFP-48 (7x7) |
-| Price | **$1.77** |
-| Stock | 40,000+ units |
+| MCU | ESP32-WROOM-32E-N8 |
+| Ethernet PHY | SR8201F (RMII) |
+| USB Bridge | CH340N |
+| Interface | RMII (native EMAC) |
+| PHY Price | **~$0.25** |
 
-**W5500 Advantages:**
-- Hardwired TCP/IP stack (offloads MCU)
-- Integrated MAC + PHY in one chip
-- Only needs 4 SPI pins + CS + INT + RST
-- Well-supported in ESP-IDF and ESPHome
-- 8 simultaneous sockets
-
-**W5500 Disadvantages:**
-- Higher cost than RTL8201F ($1.77 vs $0.40)
-- Requires external Ethernet magnetics + RJ45
-
-#### Option B: Revert to ESP32 Classic for PoE Variant
-
-Keep ESP32-S3 for USB-only variants, use ESP32-WROOM-32E for PoE variant:
-
-| Aspect | ESP32-S3 | ESP32-WROOM-32E |
-|--------|----------|-----------------|
-| RMII Support | No | Yes |
-| Native USB | Yes | No (needs CH340/CP2102) |
-| Cost | $3.42 | $2.70 |
-| PoE PHY | W5500 ($1.77) | RTL8201F ($0.40) |
-| **PoE Total** | $5.19 | $3.10 + $0.50 (USB bridge) = $3.60 |
-
-**Issue:** Two different MCUs complicates firmware and manufacturing.
-
-#### Option C: Remove PoE Variant from MVP
-
-Focus on USB-powered variants only for initial launch. Add PoE as future SKU once product is validated.
-
-### Recommended Approach: Option A (W5500)
-
-Despite higher cost, W5500 provides:
-- Single MCU platform (ESP32-S3 for all variants)
+**Advantages of ESP32-WROOM-32E + RMII:**
+- Single MCU platform for all variants
+- Lower Ethernet BOM (~$1.35 vs ~$2.70 for SPI Ethernet)
 - Proven ESP-IDF support
-- Hardware TCP/IP offload reduces CPU load
-- Simplified firmware development
+- RMII is simpler than SPI Ethernet controller
 
-### Revised PoE BOM
+**Trade-off accepted:**
+- Requires CH340N USB-UART bridge (no native USB)
+- Bluetooth 4.2 instead of 5 (acceptable for this product)
 
-| Component | Original | Revised | Delta |
-|-----------|----------|---------|-------|
-| Ethernet Controller | RTL8201F $0.40 | W5500 $1.77 | +$1.37 |
-| Si3404 PoE Controller | $1.20 | $1.20 | - |
-| Magnetics/RJ45 | $1.30 | $1.30 | - |
-| 25MHz Crystal | $0.12 | Removed (W5500 internal) | -$0.12 |
-| **Total PoE Add** | $3.02 | **$4.27** | **+$1.25** |
+### Revised PoE BOM (ESP32-WROOM-32E + RMII PHY)
 
-New PoE retail add should be **+$35** (was +$30) to maintain margin.
+| Component | Cost |
+|-----------|------|
+| SR8201F Ethernet PHY | ~$0.25 |
+| HR911105A Magjack | ~$0.95 |
+| 25MHz Crystal | ~$0.05 |
+| Passives | ~$0.10 |
+| **Ethernet Data-Only** | **~$1.35** |
+| Si3404 + PD Module | ~$4.22 |
+| **Total PoE Add** | **~$5.57** |
+
+**PoE Retail Add:** +$30
 
 ---
 
@@ -377,28 +348,27 @@ Add second power gating MOSFET for independent radar control:
 
 ---
 
-## 6. MCU Memory Configuration (Issue 3.2)
+## 6. MCU Configuration (RESOLVED)
 
-### Recommendation: ESP32-S3-WROOM-1-N8R2
+### Final Selection: ESP32-WROOM-32E-N8
 
-| Parameter | N4 (Current) | N8R2 (Recommended) |
-|-----------|--------------|---------------------|
-| Flash | 4MB | 8MB |
-| PSRAM | 0 | 2MB |
-| LCSC Part # | C2913202 | C2913206 |
-| Price | $3.42 | ~$3.90 |
-| **Delta** | - | **+$0.48** |
+| Parameter | Specification |
+|-----------|---------------|
+| MCU | ESP32-WROOM-32E-N8 |
+| Flash | 8MB |
+| SRAM | 520KB |
+| USB Bridge | CH340N |
+| LCSC Part # (MCU) | C701342 |
+| LCSC Part # (Bridge) | C2977777 |
+| **Core Cost** | **$3.3436** |
 
 ### Justification
 
-The $0.48 increase provides:
-- 2MB PSRAM eliminates heap fragmentation concerns
+ESP32-WROOM-32E-N8 + CH340N selected for:
+- Native EMAC/RMII enables low-cost Ethernet PHY
 - 8MB flash provides OTA headroom
-- Future-proofs for feature additions
-- Reduces firmware debugging effort
-- Prevents field failures from memory issues
-
-For a $69-99 retail product, this is negligible insurance.
+- Lower total BOM for PoE variants
+- Proven, mature platform
 
 ---
 
@@ -438,31 +408,34 @@ For a $69-99 retail product, this is negligible insurance.
 
 ### Core Platform (All Variants)
 
-| Item | Original | Revised | Delta |
-|------|----------|---------|-------|
-| ESP32-S3-WROOM-1 | N4 $3.42 | N8R2 $3.90 | +$0.48 |
-| Power Regulator | ME6211 $0.08 | SY8089 + passives $0.16 | +$0.08 |
-| USB ESD | None | USBLC6-2SC6 $0.02 | +$0.02 |
-| Power Mux | None | 2× SS34 $0.03 | +$0.03 |
-| **Total Core Delta** | | | **+$0.61** |
+| Item | Specification | Cost |
+|------|---------------|------|
+| ESP32-WROOM-32E-N8 | MCU Module | $3.0011 |
+| CH340N | USB-UART Bridge | $0.3425 |
+| SY8089AAAC | Buck Converter | $0.07 |
+| Passives | Inductor + caps + resistors | $0.07 |
+| USBLC6-2SC6 | USB ESD | $0.02 |
+| SS34 (x2) | Power Mux | $0.03 |
+| **Core Platform Total** | | **~$3.53** |
 
 ### Variant-Specific Updates
 
-| Variant | Original BOM | Revised BOM | Delta |
-|---------|--------------|-------------|-------|
-| RS-1 Lite | $7.73 | $8.34 | +$0.61 |
-| RS-1 Pro | $19.23 | $19.90 | +$0.67 |
+| Variant | Configuration | BOM Estimate |
+|---------|---------------|--------------|
+| RS-1 Lite | Core + LD2410 | ~$7.73 |
+| RS-1 Pro | Core + LD2410 + LD2450 | ~$19.23 |
 
-### PoE Add-On (Revised)
+### PoE Add-On (ESP32-WROOM-32E + RMII)
 
-| Item | Original | Revised | Delta |
-|------|----------|---------|-------|
-| Ethernet IC | RTL8201F $0.40 | W5500 $1.77 | +$1.37 |
-| Si3404 + Magnetics | $2.50 | $2.50 | - |
-| 25MHz Crystal | $0.12 | Removed | -$0.12 |
-| **PoE Add Total** | $3.02 | $4.15 | **+$1.13** |
+| Item | Cost |
+|------|------|
+| SR8201F PHY | ~$0.25 |
+| HR911105A Magjack | ~$0.95 |
+| Crystal + Passives | ~$0.15 |
+| Si3404 + PD | ~$4.22 |
+| **PoE Add Total** | **~$5.57** |
 
-**Revised PoE Retail Add:** +$30
+**PoE Retail Add:** +$30
 
 ### Pro Variant (Additional)
 
@@ -493,27 +466,27 @@ For a $69-99 retail product, this is negligible insurance.
 
 ## 10. Action Items
 
-### Immediate (Update Hardware Spec)
+### Resolved (Hardware Spec Updated)
 
 - [x] Replace ME6211 LDO with SY8089AAAC buck converter
 - [x] Add SS34 Schottky diode power OR-ing circuit
 - [x] Add USBLC6-2SC6 USB ESD protection
-- [x] Update MCU to ESP32-S3-WROOM-1-N8R2
-- [ ] **Revise PoE design: Replace RTL8201F with W5500**
-- [ ] Add second power gating MOSFET for Pro TDM
+- [x] **Select MCU: ESP32-WROOM-32E-N8 + CH340N**
+- [x] **Select Ethernet: RMII PHY (SR8201F)**
 
 ### Schematic Updates Required
 
+- [ ] ESP32-WROOM-32E + CH340N USB bridge schematic
 - [ ] Buck converter schematic (SY8089AAAC + passives)
 - [ ] Power mux schematic (dual SS34)
 - [ ] USB ESD schematic (USBLC6-2SC6)
-- [ ] W5500 SPI Ethernet schematic (replaces RMII)
+- [ ] SR8201F RMII Ethernet schematic
 - [ ] Dual radar power gating schematic
 
 ### Firmware Coordination Required
 
 - [ ] Radar TDM implementation spec
-- [ ] W5500 Ethernet driver integration
+- [ ] RMII Ethernet driver configuration
 - [ ] Power management for TDM operation
 
 ### Certification
@@ -530,12 +503,13 @@ For a $69-99 retail product, this is negligible insurance.
 
 | Function | Part Number | LCSC # | Package | Price |
 |----------|-------------|--------|---------|-------|
+| MCU | ESP32-WROOM-32E-N8 | C701342 | Module | $3.00 |
+| USB-UART Bridge | CH340N | C2977777 | SOP-8 | $0.34 |
 | Buck Converter | SY8089AAAC | C78988 | SOT-23-5 | $0.07 |
 | Buck Inductor | 2.2µH 3A | C408412 | 0805 | $0.02 |
 | Power Diode | SS34 | C8678 | SMA | $0.013 |
 | USB ESD | USBLC6-2SC6 | C2827654 | SOT-23-6 | $0.02 |
-| MCU | ESP32-S3-WROOM-1-N8R2 | C2913206 | Module | $3.90 |
-| Ethernet | W5500 | C32843 | LQFP-48 | $1.77 |
+| Ethernet PHY | SR8201F | TBD | LQFP-48 | $0.25 |
 | PMOS Gate | AO3401A | C15127 | SOT-23 | $0.02 |
 
 ---

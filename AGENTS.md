@@ -7,7 +7,7 @@ This file provides context for AI agents working on the RS-1 codebase.
 ## Project Overview
 
 RS-1 is a presence sensor product from OpticWorks, built on:
-- **MCU**: ESP32-S3-WROOM-1 (single PCBA, multi-variant population)
+- **MCU**: ESP32-WROOM-32E + CH340N USB-UART (single PCBA, multi-variant population)
 - **Radar**: LD2450 (24GHz mmWave, 3 targets, 6m range) and/or LD2410 (presence)
 - **Firmware**: HardwareOS (custom ESP-IDF stack)
 - **Cloud**: Cloudflare Workers + D1 + R2, EMQX for MQTT
@@ -133,7 +133,7 @@ Hardware specifications are in `docs/hardware/`. Key documents:
 |----------|---------|
 | `HARDWARE_SPEC.md` | Formal hardware requirements, BOM, electrical specs |
 | `RS-1_Unified_BOM.md` | Detailed bill of materials with part numbers |
-| `hardware-concept-evolution.md` | Architecture decisions (C3→S3 migration) |
+| `hardware-concept-evolution.md` | Architecture decisions (C3→32E migration) |
 
 ### Hardware Architecture
 
@@ -144,8 +144,8 @@ Single PCBA design with selective population for two product variants:
 │                     RS-1 Platform                           │
 ├─────────────────────────────────────────────────────────────┤
 │  Core (All Variants):                                       │
-│  • ESP32-S3-WROOM-1 (MCU)                                   │
-│  • USB-C (Power + Data)                                     │
+│  • ESP32-WROOM-32E (MCU) + CH340N (USB-UART)               │
+│  • USB-C (Power + Data via CH340N)                         │
 │  • AHT20 (Temp/Humidity), LTR-303 (Lux), WS2812 (LED)      │
 ├─────────────────────────────────────────────────────────────┤
 │  Variant Population:                                        │
@@ -153,7 +153,7 @@ Single PCBA design with selective population for two product variants:
 │  • Pro:  LD2410 + LD2450 (dual radar fusion)               │
 ├─────────────────────────────────────────────────────────────┤
 │  Add-On Options:                                            │
-│  • PoE: W5500 SPI Ethernet + Si3404 isolated flyback       │
+│  • PoE: SR8201F RMII PHY + Si3404 isolated flyback         │
 │  • IAQ: ENS160 TVOC/eCO2 (daughtercard via pogo pins)      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -169,15 +169,16 @@ Single PCBA design with selective population for two product variants:
 - Coordinate range: X ±6000mm, Y 0-6000mm
 - Frame size: 40 bytes
 
-### ESP32-S3-WROOM-1
-- Architecture: Xtensa LX7 dual-core, 240MHz
-- Flash: 4MB (N4 variant) or 8MB (N8R2 variant)
-- SRAM: 512KB
-- GPIO: 45 programmable (supports Ethernet MAC + dual radar)
-- Native USB: Yes (no external bridge needed)
+### ESP32-WROOM-32E
+- Architecture: Xtensa LX6 dual-core, 240MHz
+- Flash: 8MB (N8 variant)
+- SRAM: 520KB
+- GPIO: 34 programmable (sufficient for dual radar + RMII Ethernet)
+- Native USB: No (requires CH340N USB-UART bridge)
+- EMAC/RMII: Yes (enables low-cost Ethernet PHY)
 - Framework: ESP-IDF 5.x
 
-**Note:** Migrated from ESP32-C3 to ESP32-S3 for native Ethernet MAC support and GPIO count. See `docs/hardware/hardware-concept-evolution.md` for rationale.
+**Note:** ESP32-WROOM-32E selected over ESP32-S3 for native EMAC/RMII support, enabling low-cost Ethernet PHY for PoE variants. See `docs/hardware/hardware-concept-evolution.md` for rationale.
 
 ### Coordinate System
 - **Canonical unit**: millimeters (mm)

@@ -1,29 +1,35 @@
 # OpticWorks RS-1 Unified Bill of Materials
-**Architecture: Single PCBA, Multi-Variant Population Strategy**  
-**Last Updated:** 2025-01-13  
+**Architecture: Single PCBA, Multi-Variant Population Strategy**
+**Last Updated:** 2026-01-15
 **Status:** Pre-Production / Parts Validation Required
 
 ---
 
 ## Design Architecture Summary
 
-**Platform:** Single PCBA (MCU under evaluation: ESP32-S3 vs ESP32-WROOM-32E + CH340N)  
-**Strategy:** One PCBA with selective population for different SKUs  
-**PCB:** 2-Layer (JLCPCB or PCBWAY)  
-**Power Options:** USB-C Native or PoE (802.3af)  
+**Platform:** Single PCBA with ESP32-WROOM-32E + CH340N
+**Strategy:** One PCBA with selective population for different SKUs
+**PCB:** 2-Layer (JLCPCB or PCBWAY)
+**Power Options:** USB-C Native or PoE (802.3af via RMII PHY)
 
 ---
 
-## ⚠️ OPEN QUESTIONS - REQUIRES RESOLUTION
+## ✅ RESOLVED DECISIONS
 
-| Item | Design Doc | Scratchpad | Decision Needed |
-|------|-----------|-----------|----------------|
-| **MCU family** | ESP32-S3-WROOM-1 | ESP32-WROOM-32E + CH340N | Cost vs native USB, EMAC/RMII |
-| **S3 memory** | ESP32-S3-WROOM-1-N4 (4MB/0MB) | ESP32-S3-WROOM-1-N8R2 (8MB/2MB) | If S3 is selected |
-| **Static Radar** | LD2410B | LD2410C or LD2412 | Which variant(s)? |
-| **Tracking Radar** | LD2450 | - | Confirmed LD2450 for multi-target tracking |
-| **PoE power** | Integrated PD module | Discrete PD + flyback (Si3404 or similar) | Cost vs complexity |
-| **Magnetics** | Magjack (integrated) | External magnetics + RJ45 | Cost vs layout |
+| Item | Decision | Rationale |
+|------|----------|-----------|
+| **MCU family** | **ESP32-WROOM-32E + CH340N** | Native EMAC/RMII enables low-cost PHY; lower BOM |
+| **MCU flash** | **N8 (8MB)** | OTA headroom |
+| **Tracking Radar** | **LD2450** | Multi-target tracking confirmed |
+| **Ethernet Architecture** | **RMII PHY (SR8201F)** | Lowest cost; EMAC in MCU |
+
+## ⚠️ PENDING DECISIONS
+
+| Item | Options | Decision Needed |
+|------|---------|----------------|
+| **Static Radar** | LD2410B / LD2410C / LD2412 | Which variant(s)? |
+| **PoE power** | Integrated PD module vs discrete Si3404 + flyback | Cost vs complexity |
+| **Magnetics** | Magjack (integrated) vs external magnetics + RJ45 | Cost vs layout |
 
 ---
 
@@ -38,16 +44,21 @@
 | Bulk Cap | Samsung | CL05A106MQ5NUNC | 10µF | Multiple | TBD |
 | USB Resistor | UNI-ROYAL | 0603WAF330JT5E | 33Ω (USB-C) | 2 | TBD |
 | USB Resistor | UNI-ROYAL | 0603WAF5101T5E | 5.1kΩ (USB-C CC) | 2 | TBD |
-| USB-UART Bridge | WCH | CH340N | USB-UART (required for ESP32-WROOM-32E; DNP if S3) | 1 | $0.3425 |
+| USB-UART Bridge | WCH | CH340N | USB-UART (required) | 1 | $0.3425 |
 | Power MOSFET | UMW | AO3401A | Power Gating | 1 | TBD |
 
 ### MCU
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
 |------|-------------|-------------|----------|-----|-----------|
-| **MCU (S3 option)** | **ESPRESSIF** | **ESP32-S3-WROOM-1-N8R2** | Main Controller (native USB) | 1 | **$3.4981** |
-| **MCU (classic option)** | **ESPRESSIF** | **ESP32-WROOM-32E-N8** | Main Controller (EMAC/RMII) | 1 | **$3.0011** |
+| **MCU** | **ESPRESSIF** | **ESP32-WROOM-32E-N8** | Main Controller | 1 | **$3.0011** |
 
-*Note: Final decision needed on MCU family and flash/PSRAM configuration. If ESP32-WROOM-32E is selected, populate CH340N. If ESP32-S3 is selected, DNP CH340N.*
+**Core Cost:** $3.3436 (MCU $3.0011 + CH340N $0.3425)
+
+**Why ESP32-WROOM-32E:**
+- Native EMAC/RMII enables low-cost Ethernet PHY for PoE variants
+- Proven, mature platform with excellent ESP-IDF support
+- Lower total BOM cost vs ESP32-S3 + SPI Ethernet
+- 8MB flash provides OTA headroom
 
 ### Environmental Sensors (All Variants)
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
@@ -107,24 +118,23 @@
 #### Ethernet (data-only) BOM
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
 |------|-------------|-------------|----------|-----|-----------|
-| Ethernet PHY (preferred) | CoreChips | SR8201F | 10/100 PHY (RMII) | 1 | ~$0.2481 |
-| Ethernet PHY (alt) | IP101 | IP101GRR | 10/100 PHY (RMII) | 1 | ~$0.2684 |
-| Ethernet PHY (alt) | REALTEK | RTL8201F-VB-CG | 10/100 PHY (RMII) | 1 | ~$0.4072 |
-| RJ45 (no magnetics) | TBD | TBD | RJ45 connector | 1 | TBD |
-| Ethernet Magnetics | TBD | TBD | Transformer/magnetics | 1 | TBD |
-| RJ45 + Magnetics (alt) | HanRun | HR911105A | Integrated magjack | 1 | ~$0.9474 |
-| Crystal | YXC | X322525MOB4SI | 25MHz Oscillator | 1 | ~$0.0546 |
+| **Ethernet PHY** | **CoreChips** | **SR8201F** | 10/100 PHY (RMII) | 1 | **~$0.25** |
+| Ethernet PHY (alt) | IC+ | IP101GRR | 10/100 PHY (RMII) | 1 | ~$0.27 |
+| Ethernet PHY (alt) | REALTEK | RTL8201F-VB-CG | 10/100 PHY (RMII) | 1 | ~$0.41 |
+| RJ45 + Magnetics | HanRun | HR911105A | Integrated magjack | 1 | ~$0.95 |
+| Crystal | YXC | X322525MOB4SI | 25MHz Oscillator | 1 | ~$0.05 |
 | Passives | - | - | Terminations + decoupling | - | ~$0.10 |
 
-**Estimated Ethernet add-on (data only):** +$1.30 to +$1.46
-**Note:** Estimate assumes magjack pricing; update if external magnetics are selected.
+**Estimated Ethernet add-on (data only):** ~$1.35 (SR8201F + magjack + crystal + passives)
+
+**Note:** ESP32-WROOM-32E has native EMAC/RMII, enabling low-cost PHY (no SPI Ethernet needed).
 
 #### PoE power (802.3af PD) options
 - **Option A (module):** SDAPO DP1435-5V integrated PD module, ~$4.22
 - **Option B (discrete):** Si3404 + flyback transformer + passives, cost TBD
 
-**Estimated PoE add-on (module path):** +$5.52 to +$5.68 (data + PD module)
-**Target Retail Add:** TBD
+**Estimated PoE add-on (module path):** ~$5.57 (data + PD module)
+**Target Retail Add:** +$30
 
 **Safety Note:** PoE isolation does not prevent USB back-powering. Power mux is required (see RFD-002).
 
@@ -160,54 +170,55 @@
 
 ---
 
-## Pin Mapping (MCU dependent)
-
-### RMII Ethernet (PoE Variant)
-- Classic ESP32 only (ESP32-WROOM-32E has EMAC/RMII).
-- RMII pin map depends on PHY choice and clocking scheme.
+## Pin Mapping (ESP32-WROOM-32E)
 
 ### USB Interface
-- ESP32-S3: Native USB D+/D- on GPIO 19/20.
-- ESP32-WROOM-32E: USB-UART bridge (CH340N) required.
+- USB-UART bridge (CH340N) on UART0 (GPIO 1/3)
+
+### RMII Ethernet (PoE Variant)
+- ESP32-WROOM-32E has native EMAC/RMII
+- GPIO 0, 18-27 used for RMII signals (see HARDWARE_SPEC.md for full map)
 
 ### Radar Interfaces
-- Static (LD2410): UART
-- Tracking (LD2450): UART (separate pins, Pro only)
+- Static (LD2410): UART1 (GPIO 4/5)
+- Tracking (LD2450): UART2 (GPIO 16/17, Pro only)
 
 ### I2C Bus (Sensors)
-- SDA/SCL: AHT20, LTR-303, ENS160 (if populated)
+- SDA/SCL (GPIO 21/22): AHT20, LTR-303, ENS160 (if populated)
 
 ### Other Peripherals
-- WS2812 LED: GPIO (Single-wire data)
-- Reset Button: GPIO (Input w/ pullup)
+- WS2812 LED: GPIO 25 (Single-wire data)
+- Reset Button: GPIO 34 (Input-only, external pullup)
 
-**Total GPIO Required (Pro+PoE):** ~13 pins  
-**Note:** Re-validate GPIO budget if ESP32-WROOM-32E is selected.
+**Total GPIO Required (Pro+PoE):** ~18 pins
+**Available on ESP32-WROOM-32E:** 34 GPIO (sufficient)
 
 ---
 
 ## Next Actions
 
 ### Immediate (Design Phase)
-1. **Resolve open questions** (MCU config, radar part numbers)
+1. [x] ~~Resolve MCU selection~~ → ESP32-WROOM-32E + CH340N
 2. **Component library generation** using `easyeda2kicad` for:
    - Si3404 (PoE Controller)
-   - Link-PP Transformer (if different from H1601CG)
-   - Kinghelm RJ45
+   - SR8201F (Ethernet PHY)
+   - HR911105A (Magjack)
 3. **Create LCSC parts database** with live pricing
 4. **Verify all part availability** and lead times
 
 ### Schematic Phase
-1. Route MCU per selection (ESP32-S3 vs ESP32-WROOM-32E)
-2. Select PoE power architecture (module vs discrete) and design power stage
-3. Design I2C sensor bus (AHT20, LTR-303, ENS160)
-4. Design dual UART interfaces for radars
+1. Route ESP32-WROOM-32E with CH340N USB bridge
+2. Route RMII Ethernet interface to SR8201F PHY
+3. Select PoE power architecture (module vs discrete) and design power stage
+4. Design I2C sensor bus (AHT20, LTR-303, ENS160)
+5. Design dual UART interfaces for radars
 
 ### Layout Phase
 1. 2-layer PCB optimization
 2. Radar placement (opposite ends for Pro)
 3. PoE isolation boundary design
-4. EMI/RF considerations for mmWave sensors
+4. RMII signal routing (matched lengths)
+5. EMI/RF considerations for mmWave sensors
 
 ---
 
@@ -217,8 +228,9 @@
 2. **Cost Estimates:** Based on 100-unit pricing; will decrease with volume
 3. **PoE Safety:** Isolation does not prevent USB back-powering; power mux required
 4. **IAQ Modularity:** Pogo pin + magnet approach allows field upgrades
-5. **MCU Rationale:** ESP32-S3 offers native USB and high GPIO; ESP32-WROOM-32E offers EMAC/RMII and lower Ethernet BOM
-6. **Legacy Options Removed:** ESP32-C3 removed due to MAC/pin limitations; ESP32-32E re-evaluated as cost option
+5. **MCU Selection:** ESP32-WROOM-32E baselined for native EMAC/RMII and lower PoE BOM
+6. **USB Bridge:** CH340N required on all variants (ESP32-WROOM-32E has no native USB)
+7. **Legacy Options Removed:** ESP32-C3 removed due to MAC/pin limitations; ESP32-S3 not selected due to higher PoE cost (requires SPI Ethernet)
 
 ---
 
