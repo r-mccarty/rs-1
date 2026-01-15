@@ -1,21 +1,21 @@
-# RS-1: OpticWorks Presence Sensor
+# RS-1: OpticWorks Presence Sensor Family
 
-A custom-firmware presence sensor built on ESP32-C3 and LD2450 mmWave radar, designed for seamless Home Assistant integration.
+A family of custom-firmware presence sensors built around a single PCBA with selective population. USB-C is the default power/connection, with PoE and IAQ as add-ons.
 
 ---
 
 ## Overview
 
-RS-1 is a zone-based presence sensor that runs **HardwareOS**, a custom firmware stack providing reliable occupancy detection with low flicker. Unlike typical ESPHome implementations, RS-1 includes multi-target Kalman tracking, occlusion prediction, and confidence-based smoothing for stable presence output.
+RS-1 is a zone-based presence sensor family that runs **HardwareOS**, a custom firmware stack providing reliable occupancy detection with low flicker. Unlike typical ESPHome implementations, RS-1 includes multi-target Kalman tracking, occlusion prediction, and confidence-based smoothing for stable presence output.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         RS-1 System                             │
 │                                                                 │
-│   ┌─────────┐    ┌──────────────┐    ┌─────────────────────┐   │
-│   │ LD2450  │───▶│  HardwareOS  │───▶│   Home Assistant    │   │
-│   │  Radar  │    │   Firmware   │    │   (Native API)      │   │
-│   └─────────┘    └──────────────┘    └─────────────────────┘   │
+│   ┌────────────┐ ┌──────────────┐    ┌─────────────────────┐   │
+│   │ LD2410/2450│─▶│  HardwareOS  │───▶│   Home Assistant    │   │
+│   │  Radar(s)  │ └──────────────┘    │   (Native API)      │   │
+│   └────────────┘                     └─────────────────────┘   │
 │                         │                                       │
 │                         ▼                                       │
 │   ┌─────────────────────────────────────────────────────────┐   │
@@ -33,18 +33,38 @@ RS-1 is a zone-based presence sensor that runs **HardwareOS**, a custom firmware
 
 ---
 
+## Product Family (Single PCBA Strategy)
+
+RS-1 is not a single SKU. It is a product family built from one PCB with selective population:
+
+**Core PCBA (all variants)**
+- MCU module, USB-C, environmental sensors, status LED, reset.
+
+**Variants (USB-C base)**
+- **RS-1 Static:** LD2410 presence radar.
+- **RS-1 Dynamic:** LD2450 multi-target radar + PIR.
+- **RS-1 Fusion:** LD2410 + LD2450 + PIR.
+
+**Add-ons (optional population)**
+- **PoE:** Ethernet + PD power stage (module or discrete) for power/data over Ethernet.
+- **IAQ:** ENS160 daughtercard via pogo pins.
+
+This repo covers the full family; the hardware docs define population options and the firmware is designed to stay shared across variants.
+
+---
+
 ## Hardware
 
 | Component | Specification |
 |-----------|---------------|
-| **MCU** | ESP32-C3-MINI-1 (RISC-V, 160MHz, 4MB Flash) |
-| **Radar** | Hi-Link LD2450 (24GHz FMCW mmWave) |
+| **MCU** | ESP32-S3-WROOM-1 or ESP32-WROOM-32E (under evaluation) |
+| **Radar** | LD2410 (Static), LD2450 (Dynamic), or both (Fusion) |
 | **Detection Range** | Up to 6 meters |
-| **Field of View** | 120° horizontal, 60° vertical |
-| **Targets Tracked** | Up to 3 simultaneously |
-| **Update Rate** | 33 Hz (30ms frames) |
-| **Connectivity** | Wi-Fi 802.11 b/g/n |
-| **Power** | USB-C, 5V |
+| **Field of View** | 120° horizontal, 60° vertical (LD2450) |
+| **Targets Tracked** | Up to 3 simultaneously (Dynamic/Fusion) |
+| **Update Rate** | 33 Hz (30ms frames, LD2450) |
+| **Connectivity** | Wi-Fi 802.11 b/g/n; optional Ethernet (PoE variants) |
+| **Power** | USB-C 5V; optional PoE |
 
 ---
 
@@ -173,7 +193,7 @@ Firmware and cloud communicate via MQTT with JSON payloads. Schemas in [docs/con
 
 - ESP-IDF 5.x
 - Python 3.9+
-- USB-to-Serial adapter (for initial flash)
+- USB-C cable or USB-to-Serial adapter (depends on MCU choice)
 
 ### Building (Coming Soon)
 
