@@ -126,7 +126,7 @@ This keeps modules transport-agnostic and avoids conditional logic in each modul
 - Classic ESP32 has EMAC and RMII support.
 
 **Cons**
-- Requires USB-UART bridge on all USB-C variants.
+- Requires USB-UART bridge on all variants.
 - Adds BOM cost and board area for the bridge.
 - Loses ESP32-S3 native USB and newer features.
 
