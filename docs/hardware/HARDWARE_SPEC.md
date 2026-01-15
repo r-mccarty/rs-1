@@ -41,7 +41,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 |-----------|---------------|
 | Detection Range | Up to 6 meters |
 | Field of View | 120° horizontal × 60° vertical (LD2450) |
-| Max Tracked Targets | 3 simultaneous (Dynamic/Fusion variants) |
+| Max Tracked Targets | 3 simultaneous (Pro variant) |
 | Response Time | < 1 second |
 | Operating Temperature | 0°C to 50°C |
 | Storage Temperature | -20°C to 70°C |
@@ -74,7 +74,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
                                     │  │                                   │  │
                                     │  │  ┌─────────┐  ┌─────────┐        │  │
                                     │  │  │ LD2410  │  │ LD2450  │        │  │
-                                    │  │  │ Static  │  │ Dynamic │        │  │
+                                    │  │  │ Static  │  │Tracking │        │  │
                                     │  │  │ (UART)  │  │ (UART)  │        │  │
                                     │  │  └─────────┘  └─────────┘        │  │
                                     │  │                                   │  │
@@ -84,11 +84,11 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
                                     │  │  │  (I2C)  │  │  (I2C)  │        │  │
                                     │  │  └─────────┘  └─────────┘        │  │
                                     │  │                                   │  │
-                                    │  │  ┌─────────┐  ┌─────────┐        │  │
-                                    │  │  │  AS312  │  │ WS2812  │        │  │
-                                    │  │  │   PIR   │  │   LED   │        │  │
-                                    │  │  │ (GPIO)  │  │ (GPIO)  │        │  │
-                                    │  │  └─────────┘  └─────────┘        │  │
+                                    │  │  ┌─────────┐                        │  │
+                                    │  │  │ WS2812  │                        │  │
+                                    │  │  │   LED   │                        │  │
+                                    │  │  │ (GPIO)  │                        │  │
+                                    │  │  └─────────┘                        │  │
                                     │  │                                   │  │
                                     │  │  ┌─────────┐                     │  │
                                     │  │  │ ENS160  │  (Daughtercard)     │  │
@@ -101,19 +101,18 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 ### 3.2 Variant Matrix
 
-| Component | RS-1 Static | RS-1 Dynamic | RS-1 Fusion |
-|-----------|:-----------:|:------------:|:-----------:|
-| ESP32-S3-WROOM-1 | Required | Required | Required |
-| USB-C Power/Data | Required | Required | Required |
-| AHT20 (Temp/Hum) | Required | Required | Required |
-| LTR-303 (Lux) | Required | Required | Required |
-| WS2812 Status LED | Required | Required | Required |
-| Reset Button | Required | Required | Required |
-| LD2410B/C (Static Radar) | **Required** | - | **Required** |
-| LD2450 (Dynamic Radar) | - | **Required** | **Required** |
-| AS312 PIR Sensor | - | **Required** | **Required** |
-| PoE Components | Optional | Optional | Optional |
-| IAQ Daughtercard | Optional | Optional | Optional |
+| Component | RS-1 Lite | RS-1 Pro |
+|-----------|:---------:|:--------:|
+| ESP32-S3-WROOM-1 | Required | Required |
+| USB-C Power/Data | Required | Required |
+| AHT20 (Temp/Hum) | Required | Required |
+| LTR-303 (Lux) | Required | Required |
+| WS2812 Status LED | Required | Required |
+| Reset Button | Required | Required |
+| LD2410B/C (Static Radar) | **Required** | **Required** |
+| LD2450 (Tracking Radar) | - | **Required** |
+| PoE Components | Optional | Optional |
+| IAQ Daughtercard | Optional | Optional |
 
 ---
 
@@ -215,7 +214,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 ### 4.2 Radar Modules
 
-#### 4.2.1 Static Presence Radar (RS-1 Static, RS-1 Fusion)
+#### 4.2.1 Static Presence Radar (RS-1 Lite, RS-1 Pro)
 
 | Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
 |------|--------------|-------------|-------------|-----|-----------|
@@ -240,7 +239,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 | LD2410C | Enhanced sensitivity variant | Pin-compatible |
 | LD2412 | Extended range variant | Verify footprint |
 
-#### 4.2.2 Multi-Target Tracking Radar (RS-1 Dynamic, RS-1 Fusion)
+#### 4.2.2 Multi-Target Tracking Radar (RS-1 Pro)
 
 | Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
 |------|--------------|-------------|-------------|-----|-----------|
@@ -262,22 +261,6 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 | Baud Rate | 256000 | bps |
 | Operating Voltage | 5.0 | V |
 | Current Consumption | 150 | mA |
-
-#### 4.2.3 PIR Sensor (RS-1 Dynamic, RS-1 Fusion)
-
-| Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
-|------|--------------|-------------|-------------|-----|-----------|
-| U5 | Senba Sensing | AS312 | PIR Motion Sensor, Digital Output | 1 | $0.35 |
-| LENS1 | Senba Sensing | SB-F-02 | Fresnel Lens for AS312 | 1 | $0.20 |
-
-**AS312 Specifications:**
-| Parameter | Value | Unit |
-|-----------|-------|------|
-| Detection Range | 3 - 5 | m |
-| Field of View | 100 | ° |
-| Output | Digital (Active High) | - |
-| Operating Voltage | 2.7 - 3.3 | V |
-| Current Consumption | 15 | µA |
 
 ---
 
@@ -337,7 +320,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 **Note:** The BOM summaries below assume the ESP32-S3 core. If ESP32-WROOM-32E + CH340N is selected, update core costs and PoE Ethernet deltas accordingly.
 
-### 5.1 RS-1 Static
+### 5.1 RS-1 Lite
 
 | Category | Components | Est. Cost |
 |----------|------------|-----------|
@@ -345,49 +328,39 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 | LD2410B Radar | Radar module | $2.80 |
 | **Total** | | **~$7.73** |
 
-**Target Retail:** $69.00
+**Target Retail:** $49.00
 
-### 5.2 RS-1 Dynamic
+**Use Case:** Utility rooms - bathrooms, hallways, closets. "I exist" detection.
 
-| Category | Components | Est. Cost |
-|----------|------------|-----------|
-| Core Platform | ESP32-S3, Power, Sensors, UI | $4.93 |
-| LD2450 Radar | Radar module | $11.50 |
-| PIR System | AS312 + Lens | $0.55 |
-| **Total** | | **~$16.98** |
-
-**Target Retail:** $69.00
-
-### 5.3 RS-1 Fusion
+### 5.2 RS-1 Pro
 
 | Category | Components | Est. Cost |
 |----------|------------|-----------|
 | Core Platform | ESP32-S3, Power, Sensors, UI | $4.93 |
 | LD2410B Radar | Static presence | $2.80 |
 | LD2450 Radar | Multi-target tracking | $11.50 |
-| PIR System | AS312 + Lens | $0.55 |
-| **Total** | | **~$19.78** |
+| **Total** | | **~$19.23** |
 
-**Target Retail:** $99.00
+**Target Retail:** $89.00
 
-### 5.4 Add-On Pricing
+**Use Case:** Living spaces - living rooms, kitchens, bedrooms. Zone tracking and motion detection.
+
+### 5.3 Add-On Pricing
 
 | Option | BOM Add | Retail Add |
 |--------|---------|------------|
-| PoE (module path) | +$5.52 to +$5.68 | +$30.00 (TBD) |
-| PoE (discrete path) | TBD | +$30.00 (TBD) |
-| IAQ | +$5.00 | +$30.00 |
+| PoE | +$4.15 to +$5.68 | +$30.00 |
+| IAQ | +$5.00 | +$35.00 |
 
-### 5.5 Configuration Examples
+### 5.4 Configuration Examples
 
 | Configuration | BOM Est. | Retail |
 |---------------|----------|--------|
-| RS-1 Static (USB) | $7.73 | $69.00 |
-| RS-1 Dynamic (USB) | $16.98 | $69.00 |
-| RS-1 Fusion (USB) | $19.78 | $99.00 |
-| RS-1 Dynamic + PoE (module) | $22.50 to $22.66 | $99.00 |
-| RS-1 Fusion + PoE (module) | $25.30 to $25.46 | $129.00 |
-| RS-1 Fusion + PoE + IAQ (module) | $30.30 to $30.46 | $159.00 |
+| RS-1 Lite (USB) | $7.73 | $49.00 |
+| RS-1 Pro (USB) | $19.23 | $89.00 |
+| RS-1 Lite + PoE | $11.88 to $13.41 | $79.00 |
+| RS-1 Pro + PoE | $23.38 to $24.91 | $119.00 |
+| RS-1 Pro + PoE + IAQ | $28.38 to $29.91 | $154.00 |
 
 *Note: BOM costs based on 100-unit pricing; costs decrease with volume.*
 
@@ -436,14 +409,13 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 | 1-15 | Reserved | - | No RMII on S3; SPI Ethernet pin map TBD |
 | 16 | LD2410 UART TX | Output | Static radar |
 | 17 | LD2410 UART RX | Input | Static radar |
-| 18 | LD2450 UART TX | Output | Dynamic radar |
+| 18 | LD2450 UART TX | Output | Tracking radar (Pro) |
 | 19 | USB D- | Bidirectional | Native USB |
 | 20 | USB D+ | Bidirectional | Native USB |
-| 21 | LD2450 UART RX | Input | Dynamic radar |
+| 21 | LD2450 UART RX | Input | Tracking radar (Pro) |
 | 22 | I2C SDA | Bidirectional | Sensors |
 | 23 | I2C SCL | Output | Sensors |
 | 38 | WS2812 Data | Output | Status LED |
-| 39 | PIR Input | Input | Motion detect |
 | 40 | Reset Button | Input | Active Low, Pull-up |
 
 **Note:** If ESP32-WROOM-32E is selected, a separate GPIO allocation (including RMII pin map) is required.
@@ -483,7 +455,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 ### 8.2 Layout Guidelines
 
-1. **Radar Placement:** Place LD2410 and LD2450 at opposite ends of PCB to minimize interference (Fusion variant)
+1. **Radar Placement:** Place LD2410 and LD2450 at opposite ends of PCB to minimize interference (Pro variant)
 2. **Antenna Keepout:** 15mm clearance around MCU antenna area (S3 or 32E per selection)
 3. **Power Planes:** Solid ground plane on Layer 2
 4. **USB Routing:** Differential pair routing for USB D+/D-
@@ -636,7 +608,7 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 | MCU (classic) | ESP32-WROOM-32E-N8 | - | Requires CH340N USB-UART |
 | LDO | ME6211C33M5G-N | AP2112K-3.3 | Pin compatible |
 | Static Radar | LD2410B | LD2410C, LD2412 | Test performance |
-| Dynamic Radar | LD2450 | - | No alternate |
+| Tracking Radar | LD2450 | - | No alternate |
 | PoE Controller | Si3404-A-GMR | TPS2376 | Different topology |
 
 ### A.2 LCSC Part Numbers

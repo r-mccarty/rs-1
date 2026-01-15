@@ -61,7 +61,7 @@ The ME6211 LDO (500mA) cannot supply peak load (~650mA) and is thermally impossi
 | Output Current | 1.3A |
 | Price | $0.0217 @ 21k qty |
 
-The MT3410LB is half the price but only 1.3A - tight margin for Fusion variant. **Recommend SY8089AAAC** for reliability.
+The MT3410LB is half the price but only 1.3A - tight margin for Pro variant. **Recommend SY8089AAAC** for reliability.
 
 ### Required Additional Components
 
@@ -328,7 +328,7 @@ Add second power gating MOSFET for independent radar control:
 | Response Time | <1 second | <1 second ✓ |
 | LD2450 Frame Rate | 33 Hz | ~10 Hz |
 | LD2410 Update Rate | Continuous | ~10 Hz |
-| Power (Fusion) | ~600mA | ~450mA (alternating) |
+| Power (Pro) | ~600mA | ~450mA (alternating) |
 
 **Note:** TDM actually reduces peak power since only one radar is active at a time.
 
@@ -450,9 +450,8 @@ For a $69-99 retail product, this is negligible insurance.
 
 | Variant | Original BOM | Revised BOM | Delta |
 |---------|--------------|-------------|-------|
-| RS-1 Static | $7.73 | $8.34 | +$0.61 |
-| RS-1 Dynamic | $16.98 | $17.62 | +$0.64 |
-| RS-1 Fusion | $19.78 | $20.45 | +$0.67 |
+| RS-1 Lite | $7.73 | $8.34 | +$0.61 |
+| RS-1 Pro | $19.23 | $19.90 | +$0.67 |
 
 ### PoE Add-On (Revised)
 
@@ -463,9 +462,9 @@ For a $69-99 retail product, this is negligible insurance.
 | 25MHz Crystal | $0.12 | Removed | -$0.12 |
 | **PoE Add Total** | $3.02 | $4.15 | **+$1.13** |
 
-**Revised PoE Retail Add:** +$35 (was +$30)
+**Revised PoE Retail Add:** +$30
 
-### Fusion Variant (Additional)
+### Pro Variant (Additional)
 
 | Item | Change | Delta |
 |------|--------|-------|
@@ -477,19 +476,18 @@ For a $69-99 retail product, this is negligible insurance.
 
 | SKU | Revised BOM | Retail | Gross Margin |
 |-----|-------------|--------|--------------|
-| RS-1 Static | $8.34 | $69 | 88% |
-| RS-1 Dynamic | $17.62 | $69 | 74% |
-| RS-1 Fusion | $20.48 | $99 | 79% |
-| PoE Add-On | +$4.15 | +$35 | 88% |
-| IAQ Add-On | +$5.00 | +$30 | 83% |
+| RS-1 Lite | $7.73 | $49 | 84% |
+| RS-1 Pro | $19.23 | $89 | 78% |
+| PoE Add-On | +$4.15 | +$30 | 86% |
+| IAQ Add-On | +$5.00 | +$35 | 86% |
 
 ### Example Configurations
 
 | Configuration | BOM | Retail | Margin |
 |---------------|-----|--------|--------|
-| Dynamic + PoE | $21.77 | $104 | 79% |
-| Fusion + PoE | $24.63 | $134 | 82% |
-| Fusion + PoE + IAQ | $29.63 | $164 | 82% |
+| Lite + PoE | $11.88 | $79 | 85% |
+| Pro + PoE | $23.38 | $119 | 80% |
+| Pro + PoE + IAQ | $28.38 | $154 | 82% |
 
 ---
 
@@ -502,7 +500,7 @@ For a $69-99 retail product, this is negligible insurance.
 - [x] Add USBLC6-2SC6 USB ESD protection
 - [x] Update MCU to ESP32-S3-WROOM-1-N8R2
 - [ ] **Revise PoE design: Replace RTL8201F with W5500**
-- [ ] Add second power gating MOSFET for Fusion TDM
+- [ ] Add second power gating MOSFET for Pro TDM
 
 ### Schematic Updates Required
 

@@ -200,7 +200,7 @@ When USB VBUS is detected, disable PoE output via GPIO or load switch. This ensu
 ### 3.1 RF Coexistence: Dual 24GHz Radar Interference
 
 **Severity:** High
-**Affected:** RS-1 Fusion variant (LD2410 + LD2450)
+**Affected:** RS-1 Pro variant (LD2410 + LD2450)
 
 #### The Problem
 

@@ -154,7 +154,7 @@ The market is converging on dual-radar fusion as the solution to the static-vs-t
 
 **Competitors' fusion weakens their UX position:** Every additional sensor EP Pro and Apollo add creates more complexity that gets passed to the end user. More entities in Home Assistant, more documentation to read, more tuning to perform, more edge cases to debug.
 
-**OpticWorks can let competitors weaken themselves:** By shipping a simple, well-tuned single-radar product first, OpticWorks establishes the UX high ground. When OpticWorks later ships fusion (RS-1 Fusion or RS-Vision with camera), the fusion logic will be hidden behind the same simple interface — improving detection without degrading experience.
+**OpticWorks can let competitors weaken themselves:** By shipping a simple, well-tuned single-radar product first, OpticWorks establishes the UX high ground. When OpticWorks later ships fusion (RS-1 Pro or RS-Vision with camera), the fusion logic will be hidden behind the same simple interface — improving detection without degrading experience.
 
 **The marketing narrative writes itself:** "Other sensors bolt on more hardware and pass the complexity to you. OpticWorks fuses multiple detection methods behind the scenes so you get one reliable answer: someone's there, or they're not."
 
@@ -171,7 +171,7 @@ The market is converging on dual-radar fusion as the solution to the static-vs-t
 | Local Fallback | Full | Full | Limited | Full |
 | Price | \~$85-90 | \~$87 | \~$80 | \~$70-80 |
 
-*\*Future RS-1 Fusion and RS-Vision products will add sensors while maintaining unified UX.*
+*\*Future RS-1 Pro and RS-Vision products will add sensors while maintaining unified UX.*
 
 ## **ESPHome Licensing Analysis**
 
@@ -189,14 +189,15 @@ ESPHome uses a split licensing model that enables OpticWorks' HardwareOS strateg
 
 | Product | Sensors | Target Segment | Price Point |
 | :---- | :---- | :---- | :---- |
-| RS-1 | LD2450 (tracking) | Prosumer, zones | \~$70-80 |
-| RS-1 PoE | LD2450 \+ PoE | Prosumer \+ installers | \~$85-95 |
-| RS-1 Fusion | LD2450 \+ LD2410 | Whole-home coverage | \~$90-100 |
+| RS-1 Lite | LD2410 (presence) | Utility rooms | \~$49 |
+| RS-1 Pro | LD2410 \+ LD2450 (dual radar) | Living spaces, zone tracking | \~$89 |
+| RS-1 Lite + PoE | LD2410 \+ PoE | Utility + installers | \~$79 |
+| RS-1 Pro + PoE | LD2410 \+ LD2450 \+ PoE | Premium, whole-home | \~$119 |
 | RS-Vision | LD2450 \+ Camera \+ ML | Premium, semantic detection | \~$120-150 |
 
-## **MVP Strategy: RS-1**
+## **MVP Strategy: RS-1 Lite/Pro**
 
-**Sensor configuration:** LD2450 only (tracking radar). Single-radar approach validated by Sensy's market success.
+**Product lineup:** RS-1 Lite (LD2410 only, $49) for utility rooms. RS-1 Pro (LD2410 + LD2450 dual radar, $89) for living spaces. Single PCBA with selective population.
 
 **Strategic rationale:** 
 
@@ -204,7 +205,7 @@ ESPHome uses a split licensing model that enables OpticWorks' HardwareOS strateg
 2. **Validates what matters.** The beta proves HardwareOS, cloud OTA, mobile onboarding, and zone UX. These work identically whether single or dual radar.  
 3. **Preserves the leapfrog.** EP Pro and Apollo are fighting over radar+radar+PIR. RS-Vision with camera fusion jumps past all of them. Don't get distracted winning a race you're about to make irrelevant.  
 4. **Competitors' fusion helps OpticWorks.** Every fusion product competitors ship adds UX complexity and generates user complaints that inform OpticWorks' approach.  
-5. **Clear upgrade path.** RS-1 users who need static detection can upgrade to RS-1 Fusion or RS-Vision when available.
+5. **Clear upgrade path.** RS-1 users who need static detection can upgrade to RS-1 Pro or RS-Vision when available.
 
 ## **Competitive Advantages**
 
@@ -235,7 +236,7 @@ ESPHome uses a split licensing model that enables OpticWorks' HardwareOS strateg
 
 | Risk | Mitigation |
 | :---- | :---- |
-| Single-radar can't detect completely stationary occupants | Position RS-1 for active living spaces. Clear messaging about use cases. RS-1 Fusion addresses gap for users who need it. |
+| Single-radar can't detect completely stationary occupants | Position RS-1 for active living spaces. Clear messaging about use cases. RS-1 Pro addresses gap for users who need it. |
 | EP Pro price ($85-90) compresses margins | Undercut at $70-80. Win on UX, not feature parity. Cloud subscription provides recurring revenue. |
 | ESPHome community perception of "closed" firmware | Emphasize local-first operation, open Native API protocol, transparency about data practices. |
 | Native API protocol changes break compatibility | Monitor ESPHome releases, maintain compatibility test suite, version negotiation in protocol. |

@@ -21,7 +21,7 @@
 | **MCU family** | ESP32-S3-WROOM-1 | ESP32-WROOM-32E + CH340N | Cost vs native USB, EMAC/RMII |
 | **S3 memory** | ESP32-S3-WROOM-1-N4 (4MB/0MB) | ESP32-S3-WROOM-1-N8R2 (8MB/2MB) | If S3 is selected |
 | **Static Radar** | LD2410B | LD2410C or LD2412 | Which variant(s)? |
-| **Dynamic Radar** | LD2450 | LD2540 | LD2540 typo? Should be LD2450? |
+| **Tracking Radar** | LD2450 | - | Confirmed LD2450 for multi-target tracking |
 | **PoE power** | Integrated PD module | Discrete PD + flyback (Si3404 or similar) | Cost vs complexity |
 | **Magnetics** | Magjack (integrated) | External magnetics + RJ45 | Cost vs layout |
 
@@ -71,43 +71,30 @@
 
 ## Variant-Specific Components (Selective Population)
 
-### RS-1 Static: LD2410 Presence Detection
+### RS-1 Lite: LD2410 Presence Detection
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
 |------|-------------|-------------|----------|-----|-----------|
 | **Static Radar** | **HiLink** | **LD2410B/C or LD2412** | Presence Detection | 1 | **~$2.80** |
 | mmWave Header | Generic | DNP - Solder Direct | Radar Connection | 1 | N/A |
 
-**Estimated BOM:** ~$6.61  
-**Target Retail:** $69.00
+**Estimated BOM:** ~$7.73
+**Target Retail:** $49.00
+
+**Use Case:** Utility rooms - bathrooms, hallways, closets. "I exist" detection.
 
 ---
 
-### RS-1 Dynamic: LD2450 Multi-Target Tracking + PIR
-| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
-|------|-------------|-------------|----------|-----|-----------|
-| **Dynamic Radar** | **HiLink** | **LD2450** (or LD2540?) | Multi-Target Tracking | 1 | **~$11.50** |
-| PIR Sensor | Senba Sensing | AS312 | Passive Infrared | 1 | TBD |
-| PIR Lens | Senba Sensing | SB-F-02 | Fresnel Lens | 1 | TBD |
-| mmWave Header | Generic | DNP - Solder Direct | Radar Connection | 1 | N/A |
-
-**Estimated BOM:** ~$15.31  
-**Target Retail:** $69.00
-
-*Note: Scratchpad lists LD2540 - verify this is LD2450 for multi-target tracking*
-
----
-
-### RS-1 Fusion: Dual Radar + PIR
+### RS-1 Pro: Dual Radar Fusion
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
 |------|-------------|-------------|----------|-----|-----------|
 | Static Radar | HiLink | LD2410B/C or LD2412 | Presence Detection | 1 | ~$2.80 |
-| Dynamic Radar | HiLink | LD2450 (or LD2540?) | Multi-Target Tracking | 1 | ~$11.50 |
-| PIR Sensor | Senba Sensing | AS312 | Passive Infrared | 1 | TBD |
-| PIR Lens | Senba Sensing | SB-F-02 | Fresnel Lens | 1 | TBD |
+| Tracking Radar | HiLink | LD2450 | Multi-Target Tracking | 1 | ~$11.50 |
 | mmWave Headers | Generic | DNP - Solder Direct | Radar Connections | 2 | N/A |
 
-**Estimated BOM:** ~$18.11  
-**Target Retail:** $99.00
+**Estimated BOM:** ~$19.23
+**Target Retail:** $89.00
+
+**Use Case:** Living spaces - living rooms, kitchens, bedrooms. Zone tracking and motion detection.
 
 **Layout Note:** Place radars at opposite ends of PCB to minimize interference.
 
@@ -161,15 +148,15 @@
 
 | SKU | Configuration | Estimated BOM | Retail Price | Margin |
 |-----|--------------|---------------|--------------|--------|
-| RS-1 Static | USB + LD2410 | ~$6.61 | $69.00 | TBD |
-| RS-1 Dynamic | USB + LD2450 + PIR | ~$15.31 | $69.00 | TBD |
-| RS-1 Fusion | USB + Dual Radar + PIR | ~$18.11 | $99.00 | TBD |
-| PoE Add-On | + Ethernet/PoE | +$5.52 to +$5.68 (module) or TBD (discrete) | +$30.00 | TBD |
-| IAQ Add-On | + Air Quality | +$4.60 | +$30.00 | TBD |
+| RS-1 Lite | USB + LD2410 | ~$7.73 | $49.00 | TBD |
+| RS-1 Pro | USB + Dual Radar | ~$19.23 | $89.00 | TBD |
+| PoE Add-On | + Ethernet/PoE | +$4.15 to +$5.68 | +$30.00 | TBD |
+| IAQ Add-On | + Air Quality | +$5.00 | +$35.00 | TBD |
 
-**Example Configurations (module path):**
-- RS-1 Dynamic + PoE: $99.00 ($15.31 + $5.52 to $5.68 = ~$20.83 to ~$20.99 BOM)
-- RS-1 Fusion + PoE + IAQ: $159.00 ($18.11 + $5.52 to $5.68 + $4.60 = ~$28.23 to ~$28.39 BOM)
+**Example Configurations:**
+- RS-1 Lite + PoE: $79.00 (~$11.88 to ~$13.41 BOM)
+- RS-1 Pro + PoE: $119.00 (~$23.38 to ~$24.91 BOM)
+- RS-1 Pro + PoE + IAQ: $154.00 (~$28.38 to ~$29.91 BOM)
 
 ---
 
@@ -185,17 +172,16 @@
 
 ### Radar Interfaces
 - Static (LD2410): UART
-- Dynamic (LD2450): UART (separate pins)
+- Tracking (LD2450): UART (separate pins, Pro only)
 
 ### I2C Bus (Sensors)
 - SDA/SCL: AHT20, LTR-303, ENS160 (if populated)
 
 ### Other Peripherals
-- PIR: GPIO (Digital In)
 - WS2812 LED: GPIO (Single-wire data)
 - Reset Button: GPIO (Input w/ pullup)
 
-**Total GPIO Required (Fusion+PoE):** ~14 pins  
+**Total GPIO Required (Pro+PoE):** ~13 pins  
 **Note:** Re-validate GPIO budget if ESP32-WROOM-32E is selected.
 
 ---
@@ -219,7 +205,7 @@
 
 ### Layout Phase
 1. 2-layer PCB optimization
-2. Radar placement (opposite ends for Fusion)
+2. Radar placement (opposite ends for Pro)
 3. PoE isolation boundary design
 4. EMI/RF considerations for mmWave sensors
 

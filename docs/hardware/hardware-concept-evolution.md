@@ -29,7 +29,7 @@ We pivoted to the **ESP32-S3** architecture for native USB and GPIO headroom. La
 
 ### **1. The Initial Assumptions (The "C3 Plan")**
 
-* **The Concept:** A single PCB supporting three product tiers: Static (LD2410), Dynamic (LD2540), and Fusion (Both).
+* **The Concept:** A single PCB supporting multiple product tiers via selective population.
 * **The Hardware Choice:** ESP32-C3-WROOM-02 (chosen for low cost and native USB).
 * **The Ethernet Plan:** Realtek RTL8201F PHY (chosen for low cost, ~$0.40).
 * **The Assumption:** The C3 could handle the fusion sensor load and drive the Ethernet PHY cheaply.
@@ -45,8 +45,8 @@ As we validated the BOM, we hit two "Red Flags" that forced a redesign:
 
 **B. The Pin Count Wall**
 
-* **Discovery:** The "Fusion" variant (2x Radars + Ethernet + I2C Sensors + PIR + LED) requires **14 GPIOs**.
-* **Impact:** The ESP32-C3 only has ~12 usable GPIOs. It is physically impossible to route the Fusion board on a C3 without sacrificing features (like the Status LED or PIR).
+* **Discovery:** The Pro variant (2x Radars + Ethernet + I2C Sensors + LED) requires **13+ GPIOs**.
+* **Impact:** The ESP32-C3 only has ~12 usable GPIOs. It is physically impossible to route the Pro board on a C3 without sacrificing features.
 
 ### **3. The Optimization Pivot (Analyzing Alternatives)**
 
@@ -70,7 +70,7 @@ We evaluated two alternative paths to solve the "MAC & Pin" problem:
 **Conclusion (updated):** The MCU decision is reopened. The 32E option is cost-competitive and keeps RMII Ethernet cheap, while S3 keeps native USB and higher GPIO headroom. Final selection is pending.
 
 1. **Simplicity:** No external USB bridge chips to manage.
-2. **Feasibility:** The huge pin count makes routing the "Fusion" board easy (fewer PCB layers).
+2. **Feasibility:** The huge pin count makes routing the Pro board easy (fewer PCB layers).
 3. **Future-Proofing:** The S3 allows for re-use of hardware designs in other products potentially.
 
 ---
@@ -87,9 +87,8 @@ We settled on a **Single PCBA Design** where BOM population determines the produ
 
 #### **The "Modality" Upgrades (Population Options)**
 
-* **RS-1 Static:** Populate **LD2410B** (soldered)
-* **RS-1 Dynamic:** Populate **LD2450** (soldered) + **PIR**.
-* **RS-1 Fusion:** Populate **Both Radars** + **PIR**.
+* **RS-1 Lite:** Populate **LD2410B** (soldered) - Utility rooms, "I exist" detection.
+* **RS-1 Pro:** Populate **Both Radars (LD2410 + LD2450)** - Living spaces, zone tracking.
 
 #### **The "Pro" Upgrades (Add-ons)**
 
@@ -105,11 +104,10 @@ We settled on a **Single PCBA Design** where BOM population determines the produ
 
 | SKU | Configuration | BOM Estimate | Retail Price | Gross Margin |
 | --- | --- | --- | --- | --- |
-| **Static** | USB + LD2410 | ~$6.61 | **$69.00** | **TBD** |
-| **Dynamic** | USB + LD2450 | ~$15.31 | **$69.00** | **TBD** |
-| **Fusion** | USB + Dual Radar | ~$18.11 | **$99.00** | **TBD** |
-| **PoE Option** | Add Ethernet/Power | +$4.32 | **+$30.00** | **TBD** |
-| **IAQ Option** | Add Air Quality | ~$4.60 | **+$30.00** | **TBD** |
+| **RS-1 Lite** | USB + LD2410 | ~$7.73 | **$49.00** | **TBD** |
+| **RS-1 Pro** | USB + Dual Radar | ~$19.23 | **$89.00** | **TBD** |
+| **PoE Option** | Add Ethernet/Power | +$4.15 | **+$30.00** | **TBD** |
+| **IAQ Option** | Add Air Quality | ~$5.00 | **+$35.00** | **TBD** |
 
 ### **6. Next Actions (The Build)**
 

@@ -168,7 +168,7 @@ When user DOES need to adjust:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Single radar misses stationary occupants | High | Medium | Clear positioning guidance; RS-1 Fusion upgrade path |
+| Single radar misses stationary occupants | High | Medium | Clear positioning guidance; RS-1 Pro upgrade path (dual radar fusion) |
 | ESPHome protocol changes break compatibility | Medium | High | Protocol version negotiation; compatibility test suite |
 | Competitors copy UX approach | Medium | Medium | First-mover advantage; continuous improvement |
 | Cloud outage during setup | Low | High | Local-only setup mode; cloud features additive |

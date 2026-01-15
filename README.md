@@ -13,8 +13,8 @@ RS-1 is a zone-based presence sensor family that runs **HardwareOS**, a custom f
 │                         RS-1 System                             │
 │                                                                 │
 │   ┌────────────┐ ┌──────────────┐    ┌─────────────────────┐   │
-│   │ LD2410/2450│─▶│  HardwareOS  │───▶│   Home Assistant    │   │
-│   │  Radar(s)  │ └──────────────┘    │   (Native API)      │   │
+│   │ LD2410     │─▶│  HardwareOS  │───▶│   Home Assistant    │   │
+│   │ (+LD2450)  │ └──────────────┘    │   (Native API)      │   │
 │   └────────────┘                     └─────────────────────┘   │
 │                         │                                       │
 │                         ▼                                       │
@@ -41,13 +41,12 @@ RS-1 is not a single SKU. It is a product family built from one PCB with selecti
 - MCU module, USB-C, environmental sensors, status LED, reset.
 
 **Variants (USB-C base)**
-- **RS-1 Static:** LD2410 presence radar.
-- **RS-1 Dynamic:** LD2450 multi-target radar + PIR.
-- **RS-1 Fusion:** LD2410 + LD2450 + PIR.
+- **RS-1 Lite:** LD2410 presence radar. Utility rooms - bathrooms, hallways, closets.
+- **RS-1 Pro:** LD2410 + LD2450 dual radar fusion. Living spaces - living rooms, kitchens, bedrooms.
 
 **Add-ons (optional population)**
-- **PoE:** Ethernet + PD power stage (module or discrete) for power/data over Ethernet.
-- **IAQ:** ENS160 daughtercard via pogo pins.
+- **PoE (+$30):** Ethernet + PD power stage for power/data over Ethernet.
+- **IAQ (+$35):** ENS160 daughtercard via pogo pins.
 
 This repo covers the full family; the hardware docs define population options and the firmware is designed to stay shared across variants.
 
@@ -58,10 +57,10 @@ This repo covers the full family; the hardware docs define population options an
 | Component | Specification |
 |-----------|---------------|
 | **MCU** | ESP32-S3-WROOM-1 or ESP32-WROOM-32E (under evaluation) |
-| **Radar** | LD2410 (Static), LD2450 (Dynamic), or both (Fusion) |
+| **Radar** | LD2410 (Lite), or LD2410 + LD2450 dual fusion (Pro) |
 | **Detection Range** | Up to 6 meters |
 | **Field of View** | 120° horizontal, 60° vertical (LD2450) |
-| **Targets Tracked** | Up to 3 simultaneously (Dynamic/Fusion) |
+| **Targets Tracked** | Up to 3 simultaneously (Pro only) |
 | **Update Rate** | 33 Hz (30ms frames, LD2450) |
 | **Connectivity** | Wi-Fi 802.11 b/g/n; optional Ethernet (PoE variants) |
 | **Power** | USB-C 5V; optional PoE |

@@ -17,11 +17,14 @@ RS-1 is a presence sensor product from OpticWorks, built on:
 
 | Variant | Radar | Features | Target Retail |
 |---------|-------|----------|---------------|
-| RS-1 Static | LD2410 | Presence detection | $69 |
-| RS-1 Dynamic | LD2450 + PIR | Multi-target tracking | $69 |
-| RS-1 Fusion | LD2410 + LD2450 + PIR | Full capability | $99 |
+| RS-1 Lite | LD2410 | Static presence detection | $49 |
+| RS-1 Pro | LD2410 + LD2450 | Dual radar fusion, zone tracking | $89 |
 
-**Add-ons:** PoE (+$30), IAQ Air Quality (+$30)
+**Add-ons:** PoE (+$30), IAQ Air Quality (+$35)
+
+**Positioning:**
+- **RS-1 Lite:** "I exist" - Utility rooms (bathrooms, hallways, closets)
+- **RS-1 Pro:** "I live here" - Living spaces (living rooms, kitchens, bedrooms)
 
 ---
 
@@ -134,7 +137,7 @@ Hardware specifications are in `docs/hardware/`. Key documents:
 
 ### Hardware Architecture
 
-Single PCBA design with selective population for three product variants:
+Single PCBA design with selective population for two product variants:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -146,12 +149,11 @@ Single PCBA design with selective population for three product variants:
 │  • AHT20 (Temp/Humidity), LTR-303 (Lux), WS2812 (LED)      │
 ├─────────────────────────────────────────────────────────────┤
 │  Variant Population:                                        │
-│  • Static:  LD2410 radar                                    │
-│  • Dynamic: LD2450 radar + PIR                              │
-│  • Fusion:  LD2410 + LD2450 + PIR                          │
+│  • Lite: LD2410 radar (static presence)                     │
+│  • Pro:  LD2410 + LD2450 (dual radar fusion)               │
 ├─────────────────────────────────────────────────────────────┤
 │  Add-On Options:                                            │
-│  • PoE: RTL8201F PHY + Si3404 isolated flyback             │
+│  • PoE: W5500 SPI Ethernet + Si3404 isolated flyback       │
 │  • IAQ: ENS160 TVOC/eCO2 (daughtercard via pogo pins)      │
 └─────────────────────────────────────────────────────────────┘
 ```

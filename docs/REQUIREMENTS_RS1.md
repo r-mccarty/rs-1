@@ -32,7 +32,7 @@ RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy 
 
 ### 2.2 Out of Scope (MVP)
 
-- Multi-sensor fusion (LD2410, PIR, camera)
+- Camera-based detection (RS-Vision future product)
 - Enterprise fleet management
 - PoE variant
 - AR-assisted room scanning (post-beta)
