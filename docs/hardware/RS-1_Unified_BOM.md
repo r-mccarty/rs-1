@@ -199,17 +199,35 @@
 
 ---
 
-### IAQ Air Quality Option (All Variants)
+### IAQ Air Quality Option (Separate Module)
+
+**See:** `docs/hardware/IAQ_MODULE_SPEC.md` for complete IAQ module specification.
+
+The IAQ module is a **separate, discrete product** with its own 2-layer PCBA. Pogo pins are on the IAQ module; RS-1 only requires passive landing pads.
+
+#### RS-1 Host Interface (On RS-1 PCBA)
+
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
 |------|-------------|-------------|----------|-----|-----------|
-| TVOC/CO2 Sensor | ScioSense | ENS160-BGLM | Air Quality | 1 | ~$4.60 |
-| Pogo Pins | Generic | 0906-2-15-20-75-14-11-0 | Daughtercard Interface | 5 | TBD |
+| ENIG Landing Pads | - | - | 5-pin pogo contact pads (2.54mm pitch) | 1 set | ~$0.02 |
+| Steel Targets | Generic | N35 3mm×2mm disc | Magnetic retention targets | 2 | ~$0.05 |
 
-**Implementation:** Sensor mounted on separate daughtercard, connects via pogo pins (PWR, GND, I2C/SPI)  
-**Mechanical:** Magnet retention system  
+**Note:** Pogo pins are NOT on RS-1 BOM—RS-1 only needs passive ENIG pads and steel/nickel targets for magnet attraction.
 
-**Estimated BOM Add:** ~$4.60  
-**Target Retail Add:** +$30.00
+#### IAQ Module BOM (Separate SKU)
+
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| TVOC/CO2 Sensor | ScioSense | ENS160-BGLM | Air Quality (I2C) | 1 | ~$4.60 |
+| Pogo Pins | Mill-Max | 0906-2-15-20-75-14-11-0 | Spring-Loaded Interface Pins | 5 | ~$0.40 |
+| Neodymium Magnets | Generic | N35 3mm×2mm disc | Magnetic retention | 2 | ~$0.08 |
+| LDO (1.8V) | TBD | TBD | ENS160 power regulation | 1 | ~$0.05 |
+| Passives | - | - | Decoupling capacitors | - | ~$0.07 |
+
+**Mechanical:** Magnet snap-on attachment. RS-1 enclosure has cutouts for pogo pin access.
+
+**Estimated IAQ Module BOM:** ~$5.20
+**Target IAQ Retail:** $35.00
 
 ---
 

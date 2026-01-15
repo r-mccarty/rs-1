@@ -89,7 +89,7 @@ rs-1/
 
 ## HardwareOS Firmware Modules
 
-The firmware is organized into 11 modules. Always reference the module specs when working on firmware:
+The firmware is organized into 12 modules. Always reference the module specs when working on firmware:
 
 | Module | File | Purpose |
 |--------|------|---------|
@@ -104,6 +104,7 @@ The firmware is organized into 11 modules. Always reference the module specs whe
 | M09 | `HARDWAREOS_MODULE_LOGGING.md` | Diagnostics, telemetry |
 | M10 | `HARDWAREOS_MODULE_SECURITY.md` | Secure boot, TLS, pairing |
 | M11 | `HARDWAREOS_MODULE_ZONE_EDITOR.md` | Zone config interface (cloud) |
+| M12 | `HARDWAREOS_MODULE_IAQ.md` | IAQ module detection, ENS160 driver, OTA unlock |
 
 ---
 
@@ -135,6 +136,7 @@ Hardware specifications are in `docs/hardware/`. Key documents:
 | `HARDWARE_SPEC.md` | Formal hardware requirements, BOM, electrical specs |
 | `RS-1_Unified_BOM.md` | Detailed bill of materials with part numbers |
 | `POE_IMPLEMENTATION.md` | Complete PoE power architecture specification |
+| `IAQ_MODULE_SPEC.md` | IAQ daughterboard hardware specification |
 | `hardware-concept-evolution.md` | Architecture decisions (C3→32E migration) |
 
 ### Hardware Architecture
@@ -156,7 +158,7 @@ Single PCBA design with selective population for two product variants:
 ├─────────────────────────────────────────────────────────────┤
 │  Add-On Options:                                            │
 │  • PoE: SR8201F RMII PHY + DP1435-5V PD module             │
-│  • IAQ: ENS160 TVOC/eCO2 (daughtercard via pogo pins)      │
+│  • IAQ: Separate module (magnetic snap-on via pogo pins)   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -272,11 +274,13 @@ These are critical assumptions. If any change, review affected modules:
 | `docs/hardware/HARDWARE_SPEC.md` | **Hardware requirements, BOM, electrical specs** |
 | `docs/hardware/RS-1_Unified_BOM.md` | **Detailed bill of materials** |
 | `docs/hardware/POE_IMPLEMENTATION.md` | **Complete PoE power architecture** |
+| `docs/hardware/IAQ_MODULE_SPEC.md` | **IAQ daughterboard hardware specification** |
 | `docs/firmware/GLOSSARY.md` | Canonical term definitions |
 | `docs/firmware/COORDINATE_SYSTEM.md` | Sensor coordinate system |
 | `docs/firmware/MEMORY_BUDGET.md` | Resource constraints |
 | `docs/firmware/BOOT_SEQUENCE.md` | Module initialization DAG |
 | `docs/firmware/DEGRADED_MODES.md` | Failure handling behaviors |
+| `docs/firmware/HARDWAREOS_MODULE_IAQ.md` | M12 IAQ firmware module specification |
 | `docs/contracts/PROTOCOL_MQTT.md` | Cloud communication protocol |
 | `docs/cloud/README.md` | Cloud architecture overview |
 | `docs/testing/INTEGRATION_TESTS.md` | Cross-module test scenarios |

@@ -389,12 +389,37 @@ USB and PoE power rails are isolated using Schottky diode OR-ing (see Section 4.
 
 ---
 
-### 4.4 IAQ Option (Daughtercard)
+### 4.4 IAQ Option (Separate Daughterboard Module)
+
+**See:** `docs/hardware/IAQ_MODULE_SPEC.md` for complete IAQ module specification.
+
+The IAQ module is a **separate, discrete product** with its own 2-layer PCBA. It is not a population variant of the RS-1 board.
+
+#### 4.4.1 RS-1 Host Interface (On RS-1 PCBA)
+
+The RS-1 provides the host-side interface for the IAQ module:
 
 | Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
 |------|--------------|-------------|-------------|-----|-----------|
-| U8 | ScioSense | ENS160-BGLM | TVOC/eCO2 Sensor, I2C | 1 | $4.60 |
-| POGO1-5 | Generic | 0906-2-15-20-75-14-11-0 | Pogo Pins, PWR/GND/I2C | 5 | $0.40 |
+| PAD1-5 | - | - | ENIG Landing Pads (5-pin, 2.54mm pitch) | 1 set | ~$0.02 |
+| MAG1-2 | Generic | N35 3mm×2mm disc | Steel Targets for Magnetic Retention | 2 | ~$0.05 |
+
+**RS-1 Host Requirements:**
+- 5× ENIG pads (VCC, GND, SDA, SCL, INT) with 2.54mm pitch
+- Pad size: 1.5mm diameter minimum (for reliable pogo contact)
+- Steel targets (or nickel-plated steel) for magnet attraction
+- Enclosure cutouts to allow pogo pin access when module is attached
+
+**Note:** Pogo pins are NOT on the RS-1 BOM—they are on the IAQ module. RS-1 only needs passive landing pads and magnetic targets.
+
+#### 4.4.2 IAQ Module (Separate Product)
+
+| Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
+|------|--------------|-------------|-------------|-----|-----------|
+| U1 | ScioSense | ENS160-BGLM | TVOC/eCO2 Sensor, I2C | 1 | $4.60 |
+| POGO1-5 | Mill-Max | 0906-2-15-20-75-14-11-0 | Spring-Loaded Pogo Pins | 5 | $0.40 |
+| MAG1-2 | Generic | N35 3mm×2mm disc | Neodymium Magnets | 2 | ~$0.08 |
+| Passives | - | - | LDO, decoupling | - | ~$0.12 |
 
 **ENS160 Specifications:**
 | Parameter | Value | Unit |
@@ -405,7 +430,36 @@ USB and PoE power rails are isolated using Schottky diode OR-ing (see Section 4.
 | Operating Voltage | 1.71 - 1.98 | V |
 | Current (Measurement) | 32 | mA |
 
-**Mechanical:** Daughtercard connects via pogo pins with magnet retention system.
+#### 4.4.3 Mechanical Interface
+
+```
+   IAQ Module (Separate PCBA)              RS-1 Host (Main PCBA)
+   ┌──────────────────────┐                ┌──────────────────────┐
+   │ ┌────────────────┐   │                │                      │
+   │ │    ENS160      │   │                │   Enclosure Cutout   │
+   │ │   TVOC/eCO2    │   │                │   ┌──────────────┐   │
+   │ └────────────────┘   │                │   │              │   │
+   │                      │                │   │  ENIG Pads   │   │
+   │   [N35]    [N35]     │◄───Magnetic───►│   │  ○ ○ ○ ○ ○   │   │
+   │  Magnet   Magnet     │    Snap-On     │   │              │   │
+   │                      │                │   └──────────────┘   │
+   │   ↓  ↓  ↓  ↓  ↓      │                │   [Steel] [Steel]    │
+   │   Pogo Pins (5)      │────Contact────►│   Targets for Mag    │
+   └──────────────────────┘                └──────────────────────┘
+```
+
+**Retail Pricing:**
+- IAQ Module: **$35.00**
+- Estimated module BOM: ~$5.20
+
+#### 4.4.4 Firmware Integration
+
+The RS-1 firmware (M12 IAQ module) automatically detects IAQ module presence via I2C probing. When detected:
+1. Device checks cloud for IAQ entitlement
+2. If entitled, IAQ functionality activates immediately
+3. If not entitled, device triggers OTA to download IAQ firmware components
+
+**See:** `docs/firmware/HARDWAREOS_MODULE_IAQ.md` for firmware module specification.
 
 ---
 
@@ -721,12 +775,14 @@ USB and PoE power rails are isolated using Schottky diode OR-ing (see Section 4.
 |----------|-------------|
 | RS-1_Unified_BOM.md | Detailed BOM with part numbers |
 | POE_IMPLEMENTATION.md | Complete PoE power architecture specification |
+| IAQ_MODULE_SPEC.md | IAQ daughterboard hardware specification |
 | hardware-concept-evolution.md | Architecture decision rationale |
 | ETHERNET_RFD_002_FOLLOWUP.md | Ethernet architecture decisions |
 | RFD_002_RESPONSE.md | Power architecture solutions |
 | PRD_RS1.md | Product requirements |
 | REQUIREMENTS_RS1.md | Functional requirements |
 | WIRING.md | Development wiring guide |
+| HARDWAREOS_MODULE_IAQ.md | M12 IAQ firmware module specification |
 
 ---
 
