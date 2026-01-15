@@ -153,21 +153,75 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 | Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
 |------|--------------|-------------|-------------|-----|-----------|
 | J1 | SHOU HAN | TYPE-C 16PIN 2MD(073) | USB-C Connector, 16-pin | 1 | $0.15 |
-| U2 | MICRONE | ME6211C33M5G-N | LDO Regulator, 3.3V, 500mA, SOT-23-5 | 1 | $0.08 |
+| U2 | Silergy | SY8089AAAC | Buck Converter, 3.3V, 2A, SOT-23-5 | 1 | $0.07 |
+| L1 | TBD | 2.2µH 3A 0805 | Buck Inductor | 1 | $0.02 |
 | C1-C4 | CCTC | TCC0603X7R104K500CT | MLCC, 100nF, 50V, X7R, 0603 | 4 | $0.01 |
 | C5-C6 | Samsung | CL05A106MQ5NUNC | MLCC, 10µF, 6.3V, X5R, 0402 | 2 | $0.02 |
+| C7-C8 | Samsung | CL10A226MQ8NRNC | MLCC, 22µF, 6.3V, X5R, 0805 (Buck Out) | 2 | $0.02 |
 | R1-R2 | UNI-ROYAL | 0603WAF330JT5E | Resistor, 33Ω, 1%, 0603 (USB) | 2 | $0.01 |
 | R3-R4 | UNI-ROYAL | 0603WAF5101T5E | Resistor, 5.1kΩ, 1%, 0603 (USB CC) | 2 | $0.01 |
+| R5 | UNI-ROYAL | 0603WAF1803T5E | Resistor, 180kΩ, 1%, 0603 (Buck FB) | 1 | $0.01 |
+| R6 | UNI-ROYAL | 0603WAF3902T5E | Resistor, 39kΩ, 1%, 0603 (Buck FB) | 1 | $0.01 |
 | Q1 | UMW | AO3401A | P-Channel MOSFET, -30V, SOT-23 | 1 | $0.03 |
+| D1-D2 | MDD | SS34 | Schottky Diode, 3A 40V, SMA (Power Mux) | 2 | $0.013 |
+| U3 | TECH PUBLIC | USBLC6-2SC6 | USB ESD Protection, ±15kV, SOT-23-6 | 1 | $0.02 |
+
+**Buck Converter Notes:**
+- SY8089AAAC: 2A continuous output, 1.5MHz switching, 90%+ efficiency
+- LCSC Part #: C78988
+- Output voltage set by R5/R6: VOUT = 0.6V × (1 + R5/R6) = 0.6V × (1 + 180k/39k) ≈ 3.37V
 
 **Power Specifications:**
 | Parameter | Min | Typ | Max | Unit |
 |-----------|-----|-----|-----|------|
 | Input Voltage (USB) | 4.5 | 5.0 | 5.5 | V |
+| Input Voltage (after Power Mux) | 4.4 | 4.7 | 5.2 | V |
 | System Voltage | 3.2 | 3.3 | 3.4 | V |
 | Current (Idle) | - | 80 | 120 | mA |
 | Current (WiFi TX) | - | 310 | 380 | mA |
-| Current (Peak) | - | - | 500 | mA |
+| Current (Peak, RS-1 Pro) | - | 650 | 700 | mA |
+
+#### 4.1.2a Power Mux (USB/PoE Rail Isolation)
+
+When both USB-C and PoE are connected, the power rails must be isolated to prevent back-powering and potential damage to connected devices. The RS-1 uses Schottky diode OR-ing for cost-effective isolation.
+
+**Circuit:**
+```
+     PoE 5.0V ──────►|────┬──────► System 4.7V ──► SY8089 ──► 3.3V
+                (D1 SS34) │
+                          │
+     USB VBUS ─────►|─────┘
+                (D2 SS34)
+```
+
+**Analysis:**
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Forward Voltage Drop | ~0.3V @ 650mA | SS34 Schottky |
+| System Voltage (worst case) | 4.7V | After diode drop |
+| SY8089AAAC Minimum Input | 2.7V | Well within margin |
+| Buck Headroom | 1.4V | 4.7V - 3.3V |
+| Additional Power Loss | ~0.2W | 0.3V × 0.65A |
+
+**Total Power Mux Cost:** ~$0.03
+
+#### 4.1.2b USB ESD Protection
+
+| Item | Manufacturer | Part Number | Description | Qty | Unit Cost |
+|------|--------------|-------------|-------------|-----|-----------|
+| U3 | TECH PUBLIC | USBLC6-2SC6 | USB ESD Protection, ±15kV HBM, SOT-23-6 | 1 | $0.02 |
+
+**LCSC Part #:** C2827654
+
+**Placement:** Between USB-C connector (J1) and CH340N USB-UART bridge on D+/D- lines.
+
+**Specifications:**
+| Parameter | Value |
+|-----------|-------|
+| ESD Rating (HBM) | ±15kV |
+| ESD Rating (IEC 61000-4-2) | ±8kV contact, ±15kV air |
+| Clamping Voltage | <12V |
+| Line Capacitance | <3pF |
 
 #### 4.1.3 Environmental Sensors
 
@@ -281,7 +335,6 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 - SR8201F is the preferred PHY due to lowest cost
 - Magjack (integrated magnetics) is baselined; external magnetics + bare RJ45 is an alternative
 - Data-only Ethernet BOM: ~$1.35 (PHY + magjack + crystal + passives)
-- PoE power architecture: PD module (~$4.22) or discrete Si3404 + flyback (TBD)
 
 **PoE Specifications:**
 | Parameter | Value | Unit |
@@ -291,8 +344,48 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 | Power Class | 0-3 | - |
 | Max Power | 12.95 | W |
 | Isolation | 1500 | VAC |
+| Output Voltage | 5.0 ±5% | V |
+| Output Current | 1.5A min | A |
 
-**Safety Note:** Isolation does not prevent USB back-powering. A power mux is required for USB + PoE safety.
+#### 4.3.1 PoE Power Architecture Decision
+
+**See:** `docs/hardware/POE_IMPLEMENTATION.md` for complete PoE design specification.
+
+| Approach | Description | BOM Add | Complexity | Status |
+|----------|-------------|---------|------------|--------|
+| **Option A: PD Module** | SDAPO DP1435-5V integrated module | ~$4.22 | Low | **Recommended** |
+| Option B: Discrete | Si3404 + flyback transformer + optocoupler | ~$2.55 | High | Future optimization |
+
+**Recommendation:** Use DP1435-5V integrated PD module for initial production.
+
+**Rationale:**
+1. **Pre-certified** - Module is IEEE 802.3af compliant, reducing certification risk
+2. **Simplified layout** - No high-voltage isolation boundary design required
+3. **Time-to-market** - Drop-in solution accelerates development
+4. **Reliability** - Proven thermal and protection circuitry
+5. **Low volume** - Cost optimization (discrete) can wait for volume production
+
+**Discrete Si3404 design** should be evaluated for Rev 2 if:
+- PoE variant reaches >1000 units/month
+- Additional $1.67/unit savings justifies engineering effort
+- Layout and thermal validation resources are available
+
+#### 4.3.2 USB + PoE Coexistence
+
+USB and PoE power rails are isolated using Schottky diode OR-ing (see Section 4.1.2a).
+
+**Safety Note:** The Si3404/DP1435 isolation protects the Ethernet infrastructure from ground loops per IEEE 802.3af requirements. It does **not** prevent two 5V sources from fighting each other. The power mux (SS34 diodes) prevents current from flowing backwards from PoE into the USB host.
+
+#### 4.3.3 Complete PoE Add-On BOM
+
+| Category | Components | Est. Cost |
+|----------|------------|-----------|
+| Ethernet Data | SR8201F + HR911105A + Crystal + Passives | ~$1.35 |
+| PoE Power (Module) | DP1435-5V + Input/Output Caps | ~$4.37 |
+| Power Mux | SS34 × 2 (shared with core platform) | (included) |
+| **Total PoE Add-On** | | **~$5.72** |
+
+**Retail Add:** +$30.00 | **Margin:** ~81%
 
 ---
 
@@ -390,12 +483,31 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 
 ### 6.3 Power Consumption
 
-| Mode | Typical | Max | Unit |
-|------|---------|-----|------|
-| Idle (WiFi Connected) | 80 | 120 | mA |
-| Active (WiFi TX) | 310 | 380 | mA |
-| Peak (WiFi TX + Radar) | 450 | 550 | mA |
-| Deep Sleep | - | 10 | µA |
+| Mode | Typical | Max | Unit | Notes |
+|------|---------|-----|------|-------|
+| Idle (WiFi Connected) | 80 | 120 | mA | ESP32 only |
+| Active (WiFi TX) | 310 | 380 | mA | ESP32 transmitting |
+| RS-1 Lite Peak | 480 | 550 | mA | WiFi TX + LD2410 |
+| RS-1 Pro Peak (TDM) | 530 | 600 | mA | WiFi TX + one radar (TDM) |
+| RS-1 Pro Peak (Both Radars) | 610 | 700 | mA | WiFi TX + LD2410 + LD2450 |
+| Deep Sleep | - | 10 | µA | ESP32 deep sleep |
+
+**Current Budget Breakdown (RS-1 Pro Peak):**
+
+| Component | Typical (mA) | Max (mA) | Notes |
+|-----------|--------------|----------|-------|
+| ESP32-WROOM-32E (WiFi TX) | 310 | 380 | 20dBm transmit power |
+| LD2450 (Tracking Radar) | 130 | 150 | 24GHz active |
+| LD2410B (Static Radar) | 80 | 100 | 24GHz active |
+| AHT20 + LTR-303 | 3 | 5 | I2C sensors |
+| WS2812 LED | 10 | 60 | Depends on brightness |
+| CH340N + Misc | 5 | 10 | USB bridge + logic |
+| **RS-1 Pro Total** | **538** | **705** | Both radars active |
+
+**Notes:**
+- SY8089AAAC buck converter rated 2A provides >2.8x margin over peak current
+- TDM (Time-Division Multiplexing) reduces peak by powering one radar at a time
+- Typical operation uses TDM; both radars simultaneously is worst-case scenario
 
 ---
 
@@ -608,7 +720,10 @@ The RS-1 is a mmWave radar-based presence detection sensor platform designed for
 | Document | Description |
 |----------|-------------|
 | RS-1_Unified_BOM.md | Detailed BOM with part numbers |
+| POE_IMPLEMENTATION.md | Complete PoE power architecture specification |
 | hardware-concept-evolution.md | Architecture decision rationale |
+| ETHERNET_RFD_002_FOLLOWUP.md | Ethernet architecture decisions |
+| RFD_002_RESPONSE.md | Power architecture solutions |
 | PRD_RS1.md | Product requirements |
 | REQUIREMENTS_RS1.md | Functional requirements |
 | WIRING.md | Development wiring guide |

@@ -67,6 +67,7 @@ rs-1/
     ├── hardware/             # Hardware specifications
     │   ├── HARDWARE_SPEC.md  # Formal hardware requirements & BOM
     │   ├── RS-1_Unified_BOM.md  # Detailed bill of materials
+    │   ├── POE_IMPLEMENTATION.md  # Complete PoE power architecture
     │   └── hardware-concept-evolution.md  # Architecture decisions
     │
     ├── testing/              # Test specifications
@@ -133,6 +134,7 @@ Hardware specifications are in `docs/hardware/`. Key documents:
 |----------|---------|
 | `HARDWARE_SPEC.md` | Formal hardware requirements, BOM, electrical specs |
 | `RS-1_Unified_BOM.md` | Detailed bill of materials with part numbers |
+| `POE_IMPLEMENTATION.md` | Complete PoE power architecture specification |
 | `hardware-concept-evolution.md` | Architecture decisions (C3→32E migration) |
 
 ### Hardware Architecture
@@ -153,7 +155,7 @@ Single PCBA design with selective population for two product variants:
 │  • Pro:  LD2410 + LD2450 (dual radar fusion)               │
 ├─────────────────────────────────────────────────────────────┤
 │  Add-On Options:                                            │
-│  • PoE: SR8201F RMII PHY + Si3404 isolated flyback         │
+│  • PoE: SR8201F RMII PHY + DP1435-5V PD module             │
 │  • IAQ: ENS160 TVOC/eCO2 (daughtercard via pogo pins)      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -269,6 +271,7 @@ These are critical assumptions. If any change, review affected modules:
 |----------|---------|
 | `docs/hardware/HARDWARE_SPEC.md` | **Hardware requirements, BOM, electrical specs** |
 | `docs/hardware/RS-1_Unified_BOM.md` | **Detailed bill of materials** |
+| `docs/hardware/POE_IMPLEMENTATION.md` | **Complete PoE power architecture** |
 | `docs/firmware/GLOSSARY.md` | Canonical term definitions |
 | `docs/firmware/COORDINATE_SYSTEM.md` | Sensor coordinate system |
 | `docs/firmware/MEMORY_BUDGET.md` | Resource constraints |

@@ -38,14 +38,30 @@
 ### Power & Connectivity
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
 |------|-------------|-------------|----------|-----|-----------|
-| USB-C Connector | SHOU HAN | TYPE-C 16PIN 2MD(073) | USB Data + Power | 1 | TBD |
-| LDO Regulator | MICRONE | ME6211C33M5G-N | 3.3V Rail | 1 | TBD |
-| Decoupling Cap | CCTC | TCC0603X7R104K500CT | 100nF/0.1µF | Multiple | TBD |
-| Bulk Cap | Samsung | CL05A106MQ5NUNC | 10µF | Multiple | TBD |
-| USB Resistor | UNI-ROYAL | 0603WAF330JT5E | 33Ω (USB-C) | 2 | TBD |
-| USB Resistor | UNI-ROYAL | 0603WAF5101T5E | 5.1kΩ (USB-C CC) | 2 | TBD |
+| USB-C Connector | SHOU HAN | TYPE-C 16PIN 2MD(073) | USB Data + Power | 1 | $0.15 |
+| **Buck Converter** | **Silergy** | **SY8089AAAC** | **3.3V 2A Rail** | 1 | **$0.07** |
+| Buck Inductor | TBD | 2.2µH 3A 0805 | Buck Inductor | 1 | $0.02 |
+| Buck Output Cap | Samsung | CL10A226MQ8NRNC | 22µF 6.3V X5R 0805 | 2 | $0.02 |
+| Buck FB Resistor | UNI-ROYAL | 0603WAF1803T5E | 180kΩ 1% 0603 | 1 | $0.01 |
+| Buck FB Resistor | UNI-ROYAL | 0603WAF3902T5E | 39kΩ 1% 0603 | 1 | $0.01 |
+| Decoupling Cap | CCTC | TCC0603X7R104K500CT | 100nF/0.1µF | 4 | $0.01 |
+| Bulk Cap | Samsung | CL05A106MQ5NUNC | 10µF | 2 | $0.02 |
+| USB Resistor | UNI-ROYAL | 0603WAF330JT5E | 33Ω (USB-C) | 2 | $0.01 |
+| USB Resistor | UNI-ROYAL | 0603WAF5101T5E | 5.1kΩ (USB-C CC) | 2 | $0.01 |
 | USB-UART Bridge | WCH | CH340N | USB-UART (required) | 1 | $0.3425 |
-| Power MOSFET | UMW | AO3401A | Power Gating | 1 | TBD |
+| **Power Mux Diode** | **MDD** | **SS34** | **Schottky 3A 40V SMA** | 2 | **$0.013** |
+| **USB ESD** | **TECH PUBLIC** | **USBLC6-2SC6** | **ESD Protection SOT-23-6** | 1 | **$0.02** |
+| Power MOSFET | UMW | AO3401A | Power Gating | 1 | $0.03 |
+
+**Buck Converter Notes:**
+- SY8089AAAC replaces ME6211 LDO due to thermal/current limitations (see RFD-002)
+- 2A output provides >2.8x margin over 700mA peak load
+- LCSC Part #: C78988
+
+**Power Mux Notes:**
+- SS34 Schottky diodes isolate USB and PoE rails (see HARDWARE_SPEC.md Section 4.1.2a)
+- ~0.3V forward drop at 650mA, system voltage ~4.7V after diode
+- LCSC Part #: C8678
 
 ### MCU
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
@@ -115,6 +131,8 @@
 
 ### PoE Power Option (All Variants)
 
+**See:** `docs/hardware/POE_IMPLEMENTATION.md` for complete PoE design specification.
+
 #### Ethernet (data-only) BOM
 | Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
 |------|-------------|-------------|----------|-----|-----------|
@@ -129,14 +147,55 @@
 
 **Note:** ESP32-WROOM-32E has native EMAC/RMII, enabling low-cost PHY (no SPI Ethernet needed).
 
-#### PoE power (802.3af PD) options
-- **Option A (module):** SDAPO DP1435-5V integrated PD module, ~$4.22
-- **Option B (discrete):** Si3404 + flyback transformer + passives, cost TBD
+#### PoE Power Architecture (802.3af PD)
 
-**Estimated PoE add-on (module path):** ~$5.57 (data + PD module)
-**Target Retail Add:** +$30
+| Approach | Description | BOM Add | Status |
+|----------|-------------|---------|--------|
+| **Option A: PD Module** | SDAPO DP1435-5V integrated | **~$4.22** | **Recommended** |
+| Option B: Discrete | Si3404 + flyback + optocoupler | ~$2.55 | Future optimization |
 
-**Safety Note:** PoE isolation does not prevent USB back-powering. Power mux is required (see RFD-002).
+##### Option A: Integrated PD Module (RECOMMENDED)
+
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| **PD Module** | **SDAPO** | **DP1435-5V** | 802.3af PD + Isolated DC-DC | 1 | **~$4.22** |
+| Input Cap | TBD | 100µF 63V | PD Input Filter | 1 | ~$0.10 |
+| Output Cap | TBD | 100µF 10V | PD Output Filter | 1 | ~$0.05 |
+
+**Why Module Approach:**
+- Pre-certified IEEE 802.3af compliance
+- Integrated isolation transformer and flyback
+- No high-voltage layout complexity
+- Proven thermal and protection circuitry
+- Faster time-to-market
+
+##### Option B: Discrete Si3404 + Flyback (Future Optimization)
+
+| Part | Manufacturer | Part Number | Function | Qty | Est. Cost |
+|------|-------------|-------------|----------|-----|-----------|
+| PD Controller | Silicon Labs | Si3404-A-GMR | PoE PD Controller | 1 | ~$1.20 |
+| Flyback Transformer | TBD | TBD | Isolated DC-DC | 1 | ~$0.80 |
+| Optocoupler | Sharp | PC817 | Isolated Feedback | 1 | ~$0.05 |
+| Output Rectifier | MDD | SS54 | Schottky 5A 40V | 1 | ~$0.03 |
+| TVS Diode | Littelfuse | SMBJ58A | Input Protection | 1 | ~$0.05 |
+| Passives | - | - | Caps, resistors | - | ~$0.40 |
+| **Discrete Total** | | | | | **~$2.55** |
+
+**Note:** Discrete approach requires isolation boundary layout expertise and thermal validation. Recommended for high-volume cost optimization after initial production.
+
+#### Complete PoE Add-On Summary
+
+| Configuration | Components | Est. Cost |
+|---------------|------------|-----------|
+| Ethernet Data | SR8201F + HR911105A + Crystal + Passives | ~$1.35 |
+| PoE Power (Module) | DP1435-5V + Caps | ~$4.37 |
+| PoE Power (Discrete) | Si3404 + Flyback + Passives | ~$2.55 |
+| **Total (Module)** | | **~$5.72** |
+| **Total (Discrete)** | | **~$3.90** |
+
+**Target Retail Add:** +$30.00
+
+**Safety Note:** Power mux (SS34 diodes in core platform) isolates USB and PoE 5V rails to prevent back-powering. See HARDWARE_SPEC.md Section 4.1.2a.
 
 ---
 
@@ -158,15 +217,18 @@
 
 | SKU | Configuration | Estimated BOM | Retail Price | Margin |
 |-----|--------------|---------------|--------------|--------|
-| RS-1 Lite | USB + LD2410 | ~$7.73 | $49.00 | TBD |
-| RS-1 Pro | USB + Dual Radar | ~$19.23 | $89.00 | TBD |
-| PoE Add-On | + Ethernet/PoE | +$4.15 to +$5.68 | +$30.00 | TBD |
-| IAQ Add-On | + Air Quality | +$5.00 | +$35.00 | TBD |
+| RS-1 Lite | USB + LD2410 | ~$7.90 | $49.00 | 84% |
+| RS-1 Pro | USB + Dual Radar | ~$19.40 | $89.00 | 78% |
+| PoE Add-On (Module) | + Ethernet/PoE | +$5.72 | +$30.00 | 81% |
+| PoE Add-On (Discrete) | + Ethernet/PoE | +$3.90 | +$30.00 | 87% |
+| IAQ Add-On | + Air Quality | +$5.00 | +$35.00 | 86% |
+
+**Note:** BOM estimates include buck converter, power mux, and USB ESD protection per RFD-002 fixes.
 
 **Example Configurations:**
-- RS-1 Lite + PoE: $79.00 (~$11.88 to ~$13.41 BOM)
-- RS-1 Pro + PoE: $119.00 (~$23.38 to ~$24.91 BOM)
-- RS-1 Pro + PoE + IAQ: $154.00 (~$28.38 to ~$29.91 BOM)
+- RS-1 Lite + PoE (Module): $79.00 (~$13.62 BOM, 83% margin)
+- RS-1 Pro + PoE (Module): $119.00 (~$25.12 BOM, 79% margin)
+- RS-1 Pro + PoE + IAQ: $154.00 (~$30.12 BOM, 80% margin)
 
 ---
 
