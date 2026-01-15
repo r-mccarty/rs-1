@@ -118,7 +118,21 @@ This keeps modules transport-agnostic and avoids conditional logic in each modul
 **Cons**
 - Higher Ethernet BOM vs RMII PHY.
 
-### Option B: Split MCU (ESP32-WROOM-32E for PoE, ESP32-S3 for USB-C)
+### Option B: Single MCU (ESP32-WROOM-32E) + USB-UART + RMII PHY
+
+**Pros**
+- Single PCBA across PoE and USB-C variants.
+- RMII PHY (RTL8201F) lowers PoE BOM vs SPI Ethernet.
+- Classic ESP32 has EMAC and RMII support.
+
+**Cons**
+- Requires USB-UART bridge on all USB-C variants.
+- Adds BOM cost and board area for the bridge.
+- Loses ESP32-S3 native USB and newer features.
+
+**Conclusion:** This can be cheaper than ESP32-S3 + SPI Ethernet if the USB-UART bridge cost is lower than the W5500 delta and if the classic ESP32 meets performance and GPIO needs.
+
+### Option C: Split MCU (ESP32-WROOM-32E for PoE, ESP32-S3 for USB-C)
 
 **Pros**
 - RMII PHY (RTL8201F) lowers PoE BOM.
@@ -140,4 +154,3 @@ This keeps modules transport-agnostic and avoids conditional logic in each modul
 2. Update `docs/hardware/HARDWARE_SPEC.md` and `docs/hardware/RS-1_Unified_BOM.md` to remove RMII PHY assumptions if SPI is selected.
 3. Update firmware assumptions in `docs/firmware/HARDWAREOS_MODULE_NATIVE_API.md` (A4) and add Ethernet transport notes in M07/M09.
 4. Validate power mux design for USB + PoE per RFD-002.
-
