@@ -148,7 +148,44 @@ This keeps modules transport-agnostic and avoids conditional logic in each modul
 
 ---
 
-## 7. Follow-Up Actions
+## 7. Cost Snapshot (Qty ~100, LCSC)
+
+### 7.1 Core PCBA baseline (ESP32-WROOM-32E + CH340N)
+
+| Item | Price @~100 | Notes |
+| --- | --- | --- |
+| ESP32-WROOM-32E-N8 | $3.0011 | Core MCU module |
+| CH340N USB-UART | $0.3425 | USB bridge for classic ESP32 |
+| **Core subtotal** | **$3.3436** | MCU + bridge |
+
+**Comparison:** ESP32-S3-WROOM-1-N8R2 is $3.4981 at ~100, which is +$0.1545 vs the 32E + CH340N core.
+
+### 7.2 Ethernet data-only add-on (RMII PHY + magjack + passives)
+
+**Assumptions:** RJ45 with integrated magnetics (magjack) ~$0.9474, 25 MHz crystal ~$0.0546, passives (terminations + decoupling) ~$0.10.
+**Note:** If we switch to external magnetics + bare RJ45, re-baseline the add-on delta (magjack is the current priced reference).
+
+| PHY choice | Estimated Ethernet add-on delta |
+| --- | --- |
+| SR8201F | ~$1.30 |
+| IP101GRR | ~$1.32 |
+| RTL8201F | ~$1.46 |
+
+### 7.3 PoE power add-on (802.3af PD)
+
+**Module reference:** DP1435-5V integrated PD module at ~$4.2172 (pricing shown at 10+, used as the ~100 proxy).
+
+| PHY choice | Ethernet add-on | + PD module | **Total PoE add-on delta** |
+| --- | --- | --- | --- |
+| SR8201F | ~$1.30 | +$4.22 | **~$5.52** |
+| IP101GRR | ~$1.32 | +$4.22 | **~$5.54** |
+| RTL8201F | ~$1.46 | +$4.22 | **~$5.68** |
+
+**Note:** Discrete PD + flyback (Si3404 or similar) is still under evaluation and likely cheaper than a module, but requires layout, thermal, and isolation validation.
+
+---
+
+## 8. Follow-Up Actions
 
 1. Choose SPI Ethernet controller (W5500 vs CH390H).
 2. Update `docs/hardware/HARDWARE_SPEC.md` and `docs/hardware/RS-1_Unified_BOM.md` to remove RMII PHY assumptions if SPI is selected.

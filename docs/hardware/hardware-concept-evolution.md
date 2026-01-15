@@ -6,9 +6,24 @@ Here is the comprehensive summary of our design session for the **OpticWorks RS-
 
 We began with a plan to build a low-cost, multi-variant sensor using the **ESP32-C3**. Through technical validation and unit economic modeling, we identified critical flaws in that approach (specifically regarding Ethernet compatibility and pin counts).
 
-We pivoted to the **ESP32-S3** architecture. While the chip cost is marginally higher, it is the only solution that supports a **Single-PCBA strategy** capable of handling "Fusion" (Dual Radar) and PoE without expensive external controllers.
+We pivoted to the **ESP32-S3** architecture for native USB and GPIO headroom. Later Ethernet findings (RFD-002) and cost review reopened the MCU decision, since ESP32-S3 lacks EMAC/RMII support and needs SPI Ethernet for PoE.
 
-**Final Verdict:** The **ESP32-S3-WROOM-1-N4** is the unified platform for all OpticWorks sensors.
+**Prior Verdict (2026-01-14):** The **ESP32-S3-WROOM-1-N4** was selected as the unified platform.
+**Status Update (2026-01-XX):** MCU selection is reopened. See the cost and Ethernet addendum below.
+
+---
+
+## **Addendum: Cost and Ethernet Re-evaluation (2026-01-XX)**
+
+**Cost snapshot (LCSC, ~100 qty):**
+- **ESP32-WROOM-32E-N8 + CH340N** core: **$3.3436**
+- **ESP32-S3-WROOM-1-N8R2** module: **$3.4981** (about **+$0.1545** vs 32E + CH340N)
+
+**Implications:**
+1. **RMII data path is cheaper** with classic ESP32 (EMAC + low-cost PHY + magjack).
+2. **ESP32-S3 requires SPI Ethernet** for PoE data, which increases BOM cost.
+3. **PoE power architecture is still open:** integrated PD module vs discrete PD + flyback (Si3404 or similar).
+4. **Single-PCBA strategy remains the goal,** but the core MCU choice is under active re-evaluation.
 
 ---
 
@@ -39,20 +54,20 @@ We evaluated two alternative paths to solve the "MAC & Pin" problem:
 
 **Path A: The "Classic" (ESP32-WROOM-32E)**
 
-* **Pros:** Has native MAC (supports cheap PHY). Cheapest MCU option ($2.70).
-* **Cons:** No native USB. Requires an external USB-to-UART bridge (CP2102/CH340), adding cost and complexity ($0.50 + parts). Old technology.
+* **Pros:** Has native EMAC/RMII (supports low-cost PHY). Lower Ethernet BOM. Core pricing at ~100: ESP32-WROOM-32E-N8 ($3.0011) + CH340N ($0.3425) = $3.3436.
+* **Cons:** No native USB. Requires an external USB-to-UART bridge on USB-C variants. Older core vs S3.
 
 **Path B: The "Modern" (ESP32-S3)**
 
-* **Pros:** Has **Native MAC** (supports cheap PHY) AND **Native USB** (no bridge needed). Massive pin count (45 GPIOs). AI capable.
-* **Cons:** Higher MCU cost ($3.42).
+* **Pros:** Native USB (no bridge needed). High GPIO count (45). Strong DSP/AI capability.
+* **Cons:** No EMAC/RMII. PoE data requires SPI Ethernet. Module pricing at ~100: $3.4981.
 
 **The Economic Showdown (100 Unit Pricing):**
 
-* **Base Model:** The S3 is ~$0.17 more expensive than the 32E combo.
-* **PoE Model:** The S3 is ~$0.72 more expensive than the 32E combo.
+* **Base Model:** The S3 module is about $0.1545 more expensive than 32E + CH340N.
+* **PoE Model:** RMII Ethernet add-on is about $1.30 to $1.46 (PHY + magjack + passives). SPI Ethernet adds more BOM cost on S3. See `docs/hardware/ETHERNET_RFD_002_FOLLOWUP.md`.
 
-**Conclusion:** While the 32E is strictly cheaper, the **ESP32-S3** was chosen because:
+**Conclusion (updated):** The MCU decision is reopened. The 32E option is cost-competitive and keeps RMII Ethernet cheap, while S3 keeps native USB and higher GPIO headroom. Final selection is pending.
 
 1. **Simplicity:** No external USB bridge chips to manage.
 2. **Feasibility:** The huge pin count makes routing the "Fusion" board easy (fewer PCB layers).
@@ -66,7 +81,7 @@ We settled on a **Single PCBA Design** where BOM population determines the produ
 
 #### **The Core Platform (On Every Board)**
 
-* **MCU:** **ESP32-S3-WROOM-1-N4** (4MB Flash, No PSRAM).
+* **MCU:** Under evaluation (ESP32-S3-WROOM-1-N4 vs ESP32-WROOM-32E-N8 + CH340N).
 * **Power:** USB-C (Native Data + Power).
 * **Sensors:** AHT20 (Temp/Hum), LTR-303 (Lux), WS2812 clone (LED).
 
@@ -78,8 +93,8 @@ We settled on a **Single PCBA Design** where BOM population determines the produ
 
 #### **The "Pro" Upgrades (Add-ons)**
 
-* **PoE:** Populate **Si3404** (Isolated Flyback Controller), **Transformer**, and **RTL8201F PHY**.
-* *Safety Note:* We mandated an **Isolated Flyback** topology to protect users plugging in USB cables while PoE is active.
+* **PoE:** Populate PD power stage (module or discrete flyback), RMII PHY (classic ESP32) or SPI Ethernet (S3), plus RJ45 with magnetics.
+* *Safety Note:* PoE isolation does not prevent USB back-powering. Power mux is required (see RFD-002).
 
 
 * **IAQ:** Do not populate components. Solder a **Daughtercard** via Pogo Pins (contains ENS160).
@@ -98,6 +113,6 @@ We settled on a **Single PCBA Design** where BOM population determines the produ
 
 ### **6. Next Actions (The Build)**
 
-1. **Library:** Use `easyeda2kicad` to generate verified footprints for the **Si3404**, **Link-PP Transformer**, and **Kinghelm RJ45**.
-2. **Schematic:** Route the ESP32-S3 using the finalized pin map (RMII on GPIO 1-15, USB on 19/20).
+1. **Library:** Use `easyeda2kicad` to generate verified footprints for the PoE power stage (module or discrete), RJ45, and PHY.
+2. **Schematic:** Route MCU per final selection. RMII pin map applies to classic ESP32 only; S3 requires SPI Ethernet.
 3. **Layout:** Place radars at opposite ends of the PCB to minimize interference.
