@@ -45,7 +45,7 @@ rs-1/
     │   ├── HARDWAREOS_MODULE_*.md  # Per-module specifications
     │   ├── BOOT_SEQUENCE.md  # Module initialization order
     │   ├── COORDINATE_SYSTEM.md  # Sensor coordinate system (mm canonical)
-    │   ├── MEMORY_BUDGET.md  # Resource constraints (200KB heap)
+    │   ├── MEMORY_BUDGET.md  # Resource constraints (~250KB heap)
     │   ├── DEGRADED_MODES.md # Failure handling behaviors
     │   └── GLOSSARY.md       # Canonical term definitions
     │
@@ -256,7 +256,7 @@ These are critical assumptions. If any change, review affected modules:
 | Max targets | 3 | M01, M02, M03 |
 | Coordinate unit | **mm** (canonical) | M01, M02, M03, M11 |
 | Coordinate range | X ±6000mm, Y 0-6000mm | M01, M03 |
-| Heap budget | 200KB available | All modules |
+| Heap budget | ~250KB available | All modules |
 | TLS memory | ~33KB per connection | M05, M07, M10 |
 | NVS commits | On change only (<10/day) | M06, M08 |
 | Sensitivity | `hold_time_ms = (100 - sensitivity) * 50` | M03, M04, M11 |
