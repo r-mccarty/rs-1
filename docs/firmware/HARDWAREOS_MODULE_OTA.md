@@ -33,15 +33,49 @@ MQTT triggers OTA; HTTPS delivers firmware. ESP-IDF handles download, validation
 
 ## Trigger Payload Schema
 
+Per `../contracts/SCHEMA_OTA_MANIFEST.json`:
+
 ```json
-{"version": "1.2.0", "url": "https://fw.opticworks.io/rs1/1.2.0.bin", "sha256": "...", "min_rssi": -70, "rollout_id": "2026-01-15-a"}
+{
+  "version": "1.2.0",
+  "url": "https://fw.opticworks.io/rs1/1.2.0.bin?sig=abc123",
+  "sha256": "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd",
+  "min_rssi": -70,
+  "rollout_id": "2026-01-15-a",
+  "issued_at": "2026-01-15T10:00:00Z"
+}
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `version` | string | Yes | Target firmware version (semver) |
+| `url` | string | Yes | HTTPS URL to signed firmware binary |
+| `sha256` | string | Yes | SHA-256 hash of firmware (64 hex chars) |
+| `min_rssi` | integer | No | Minimum Wi-Fi RSSI to proceed (default: -70) |
+| `rollout_id` | string | Yes | Unique rollout identifier for tracking |
+| `issued_at` | string | Yes | ISO 8601 timestamp of trigger issuance |
 
 ## Status Payload Schema
 
 ```json
-{"status": "success|failed|downloading", "version": "1.2.0", "error": null, "progress": 100, "rollout_id": "2026-01-15-a"}
+{
+  "status": "downloading",
+  "version": "1.2.0",
+  "progress": 45,
+  "error": null,
+  "rollout_id": "2026-01-15-a",
+  "timestamp": "2026-01-15T10:05:30Z"
+}
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | enum | `pending`, `downloading`, `verifying`, `success`, `failed` |
+| `version` | string | Firmware version being updated |
+| `progress` | integer | Download progress (0-100) |
+| `error` | string | Error message if status is `failed` |
+| `rollout_id` | string | Rollout identifier from trigger |
+| `timestamp` | string | ISO 8601 timestamp |
 
 ## Device Flow
 

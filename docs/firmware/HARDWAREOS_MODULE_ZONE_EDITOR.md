@@ -33,12 +33,20 @@ Provide a zone editor experience comparable to Sensy One, without requiring a Ho
 
 ### 5.1 Coordinate System
 
-- X/Y in meters relative to radar origin.
-- Positive X/Y axes aligned to device coordinate frame.
-- Z ignored for MVP (2D).
+**User-Facing (Zone Editor UI/API):**
+- X/Y in **meters** relative to radar origin
+- Positive X/Y axes aligned to device coordinate frame
+- Z ignored for MVP (2D)
+
+**Internal Firmware:**
+- All coordinates stored and processed in **millimeters (mm)**
+- Conversion happens at M11 boundary per COORDINATE_SYSTEM.md
+- `mm = (int16_t)(meters * 1000.0f)` on receive
+- `meters = mm / 1000.0f` on send
 
 ### 5.2 Zone Schema (Device)
 
+**Internal Storage (mm):**
 ```json
 {
   "version": 3,
@@ -48,19 +56,26 @@ Provide a zone editor experience comparable to Sensy One, without requiring a Ho
       "id": "zone_living",
       "name": "Living Room",
       "type": "include",
-      "vertices": [[0.2, 0.4], [2.0, 0.4], [2.0, 3.0], [0.2, 3.0]],
-      "sensitivity": { "z_score": 2.5 }
+      "vertices": [[200, 400], [2000, 400], [2000, 3000], [200, 3000]],
+      "sensitivity": 50
     }
-  ],
-  "walls": []
+  ]
 }
 ```
 
+**Note:** MQTT payloads use mm (see `../contracts/SCHEMA_ZONE_CONFIG.json`). The Zone Editor UI converts to/from meters for user display.
+
+**Sensitivity:** Integer 0-100 per GLOSSARY.md:
+- 0 = Maximum stability (5000ms hold time, minimal flicker)
+- 50 = Balanced (default)
+- 100 = Maximum responsiveness (instant, may flicker)
+
 Constraints:
 
-- Max vertices per zone: 8 (tunable).
-- Zones may overlap; include zones take precedence.
-- Invalid polygons rejected with error.
+- Max vertices per zone: 8 (tunable)
+- Max zones: 16 (resource-constrained)
+- Zones may overlap; include zones take precedence
+- Invalid polygons rejected with error
 
 ## 6. Local Device API (LAN)
 

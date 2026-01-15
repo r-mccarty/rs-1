@@ -56,76 +56,80 @@ Collect, process, and store device telemetry from RS-1 devices. The Telemetry Se
 | Events | On occurrence | 90 days | OTA, errors, state changes |
 | Diagnostics | On request | 7 days | Deep debugging info |
 
-### 3.2 Heartbeat Payload
+### 3.2 Telemetry Payload
 
-Published to `opticworks/{device_id}/telemetry/heartbeat`:
+**All telemetry is published to a single topic per PROTOCOL_MQTT.md:**
+
+`opticworks/{device_id}/telemetry` (QoS 0, No retain)
+
+**Schema:** See `../contracts/SCHEMA_TELEMETRY.json`
 
 ```json
 {
+  "device_id": "aabbccddeeff00112233445566778899",
   "timestamp": "2026-01-20T10:00:00Z",
+  "firmware_version": "1.2.0",
   "uptime_sec": 86400,
-  "wifi_rssi": -55,
-  "heap_free_kb": 120,
-  "radar_connected": true,
-  "presence": true,
-  "zone_states": [1, 0, 1, 0]
+  "metrics": {
+    "system.uptime_sec": 86400,
+    "system.free_heap": 45000,
+    "system.wifi_rssi": -55,
+    "radar.frames_received": 9900,
+    "radar.frames_invalid": 50,
+    "tracking.active_tracks": 2,
+    "zone.occupancy_changes": 45
+  },
+  "logs": [
+    {"ts": 86399000, "lvl": "W", "tag": "ZONE", "msg": "Flicker detected"}
+  ]
 }
 ```
 
-### 3.3 Performance Payload
+**Metric Categories (via metric name prefix):**
 
-Published to `opticworks/{device_id}/telemetry/performance`:
+| Prefix | Purpose | Example Metrics |
+|--------|---------|-----------------|
+| `system.` | System health | `uptime_sec`, `free_heap`, `wifi_rssi`, `cpu_usage` |
+| `radar.` | Radar performance | `frames_received`, `frames_invalid`, `frame_rate_hz` |
+| `tracking.` | Tracking statistics | `active_tracks`, `id_switches` |
+| `zone.` | Zone activity | `occupancy_changes`, `false_vacant_events` |
+| `api.` | API statistics | `connections`, `messages_sent` |
+
+**Note:** Heartbeat, performance, and event data are combined into a single telemetry batch format rather than using separate topics, per the contract.
+
+### 3.3 Event Logging
+
+Events are included in the telemetry batch as log entries:
 
 ```json
 {
+  "device_id": "aabbccddeeff00112233445566778899",
   "timestamp": "2026-01-20T10:00:00Z",
-  "period_sec": 300,
-  "cpu_usage_percent": 15,
-  "heap_min_free_kb": 95,
-  "heap_largest_block_kb": 80,
-  "radar_frames_received": 9900,
-  "radar_frames_parsed": 9850,
-  "radar_frames_errors": 50,
-  "tracks_created": 120,
-  "tracks_confirmed": 85,
-  "zone_triggers": 45,
-  "api_messages_sent": 600,
-  "wifi_reconnects": 0,
-  "nvs_writes": 0
+  "metrics": { ... },
+  "logs": [
+    {"ts": 86395000, "lvl": "I", "tag": "OTA", "msg": "ota_complete:1.1.0->1.2.0"},
+    {"ts": 86390000, "lvl": "I", "tag": "BOOT", "msg": "boot:power_on"}
+  ]
 }
 ```
 
-### 3.4 Event Payload
+### 3.4 Event Types
 
-Published to `opticworks/{device_id}/telemetry/event`:
+Events are encoded in log entries with tag indicating the event type:
 
-```json
-{
-  "timestamp": "2026-01-20T10:00:00Z",
-  "event_type": "ota_complete",
-  "event_data": {
-    "from_version": "1.1.0",
-    "to_version": "1.2.0",
-    "duration_sec": 45
-  }
-}
-```
-
-### 3.5 Event Types
-
-| Event | Description | Data Fields |
-|-------|-------------|-------------|
-| `boot` | Device started | `boot_reason`, `firmware_version` |
-| `ota_start` | OTA download began | `version`, `rollout_id` |
-| `ota_complete` | OTA succeeded | `from_version`, `to_version`, `duration_sec` |
-| `ota_failed` | OTA failed | `version`, `error`, `stage` |
-| `radar_disconnect` | Radar stopped responding | `last_frame_age_ms` |
-| `radar_reconnect` | Radar recovered | `downtime_ms` |
-| `wifi_disconnect` | Wi-Fi lost | `rssi_before` |
-| `wifi_reconnect` | Wi-Fi restored | `downtime_ms` |
-| `config_change` | Configuration updated | `source`, `config_version` |
-| `watchdog_reset` | Watchdog triggered | `task_name`, `stack_trace` |
-| `error` | Application error | `module`, `code`, `message` |
+| Tag | Log Level | Message Format | Description |
+|-----|-----------|----------------|-------------|
+| `BOOT` | I | `boot:{reason}` | Device started |
+| `OTA` | I | `ota_start:{version}` | OTA download began |
+| `OTA` | I | `ota_complete:{from}->{to}` | OTA succeeded |
+| `OTA` | E | `ota_failed:{version}:{error}` | OTA failed |
+| `RADAR` | W | `radar_disconnect:{age_ms}` | Radar stopped responding |
+| `RADAR` | I | `radar_reconnect:{downtime_ms}` | Radar recovered |
+| `WIFI` | W | `wifi_disconnect:{rssi}` | Wi-Fi lost |
+| `WIFI` | I | `wifi_reconnect:{downtime_ms}` | Wi-Fi restored |
+| `CONFIG` | I | `config_change:{version}` | Configuration updated |
+| `MAIN` | E | `watchdog_reset:{task}` | Watchdog triggered |
+| `*` | E | `error:{code}:{message}` | Application error |
 
 ---
 
@@ -133,140 +137,136 @@ Published to `opticworks/{device_id}/telemetry/event`:
 
 ### 4.1 EMQX Webhook
 
-EMQX forwards telemetry messages to the Worker:
+EMQX forwards telemetry messages to the Worker. All telemetry arrives on a single topic per device.
 
 ```typescript
 // POST /webhook/telemetry
+// Topic: opticworks/{device_id}/telemetry
 async function handleTelemetry(request: Request): Promise<Response> {
   const message = await request.json();
 
   const deviceId = extractDeviceId(message.topic);
-  const telemetryType = extractTelemetryType(message.topic);
-  const payload = JSON.parse(message.payload);
+  const payload: TelemetryPayload = JSON.parse(message.payload);
 
-  // Validate against schema
-  const valid = await validateSchema(telemetryType, payload);
+  // Validate against SCHEMA_TELEMETRY.json
+  const valid = await validateSchema('telemetry', payload);
   if (!valid) {
     console.error(`Invalid telemetry from ${deviceId}:`, payload);
     return new Response('Invalid payload', { status: 400 });
   }
 
-  // Process based on type
-  switch (telemetryType) {
-    case 'heartbeat':
-      await processHeartbeat(deviceId, payload);
-      break;
-    case 'performance':
-      await processPerformance(deviceId, payload);
-      break;
-    case 'event':
-      await processEvent(deviceId, payload);
-      break;
-    case 'diagnostics':
-      await processDiagnostics(deviceId, payload);
-      break;
+  // Process metrics
+  await processMetrics(deviceId, payload.metrics, payload.timestamp);
+
+  // Process log entries (events)
+  if (payload.logs && payload.logs.length > 0) {
+    await processLogs(deviceId, payload.logs, payload.timestamp);
   }
+
+  // Update device state
+  await updateDeviceState(deviceId, payload);
 
   return new Response('OK');
 }
 ```
 
-### 4.2 Heartbeat Processing
+### 4.2 Metrics Processing
 
 ```typescript
-async function processHeartbeat(deviceId: string, payload: Heartbeat): Promise<void> {
-  // Update device state
-  await db.execute(`
-    UPDATE devices
-    SET online = 1,
-        last_seen = ?,
-        wifi_rssi = ?,
-        heap_free_kb = ?,
-        radar_connected = ?,
-        presence = ?
-    WHERE device_id = ?
-  `, [
-    payload.timestamp,
-    payload.wifi_rssi,
-    payload.heap_free_kb,
-    payload.radar_connected,
-    payload.presence,
-    deviceId
-  ]);
-
-  // Detect anomalies
-  if (payload.heap_free_kb < 50) {
-    await createAlert(deviceId, 'low_memory', payload);
-  }
-
-  if (!payload.radar_connected) {
-    await createAlert(deviceId, 'radar_disconnected', payload);
-  }
-}
-```
-
-### 4.3 Performance Processing
-
-```typescript
-async function processPerformance(deviceId: string, payload: Performance): Promise<void> {
-  // Store in D1 for aggregation
+async function processMetrics(
+  deviceId: string,
+  metrics: Record<string, number>,
+  timestamp: string
+): Promise<void> {
+  // Store performance metrics in D1 for aggregation
   await db.execute(`
     INSERT INTO telemetry_performance (
-      device_id, timestamp, period_sec,
+      device_id, timestamp,
       cpu_usage_percent, heap_min_free_kb,
       radar_frames_received, radar_frames_errors,
       tracks_created, zone_triggers
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     deviceId,
-    payload.timestamp,
-    payload.period_sec,
-    payload.cpu_usage_percent,
-    payload.heap_min_free_kb,
-    payload.radar_frames_received,
-    payload.radar_frames_errors,
-    payload.tracks_created,
-    payload.zone_triggers
+    timestamp,
+    metrics['system.cpu_usage'] ?? null,
+    Math.floor((metrics['system.free_heap'] ?? 0) / 1024),
+    metrics['radar.frames_received'] ?? 0,
+    metrics['radar.frames_invalid'] ?? 0,
+    metrics['tracking.active_tracks'] ?? 0,
+    metrics['zone.occupancy_changes'] ?? 0
   ]);
 
-  // Calculate error rate
-  const errorRate = payload.radar_frames_errors / payload.radar_frames_received;
+  // Detect anomalies from metrics
+  const freeHeap = metrics['system.free_heap'] ?? 100000;
+  if (freeHeap < 50000) {
+    await createAlert(deviceId, 'low_memory', { free_heap: freeHeap });
+  }
+
+  const radarFrames = metrics['radar.frames_received'] ?? 1;
+  const radarErrors = metrics['radar.frames_invalid'] ?? 0;
+  const errorRate = radarErrors / radarFrames;
   if (errorRate > 0.01) {
     await createAlert(deviceId, 'high_radar_errors', { errorRate });
   }
 }
 ```
 
-### 4.4 Event Processing
+### 4.3 Log/Event Processing
 
 ```typescript
-async function processEvent(deviceId: string, payload: Event): Promise<void> {
-  // Store in D1
-  await db.execute(`
-    INSERT INTO telemetry_events (
-      device_id, timestamp, event_type, event_data
-    ) VALUES (?, ?, ?, ?)
-  `, [
-    deviceId,
-    payload.timestamp,
-    payload.event_type,
-    JSON.stringify(payload.event_data)
-  ]);
+async function processLogs(
+  deviceId: string,
+  logs: Array<{ts: number, lvl: string, tag: string, msg: string}>,
+  batchTimestamp: string
+): Promise<void> {
+  for (const log of logs) {
+    // Store in D1
+    await db.execute(`
+      INSERT INTO telemetry_events (
+        device_id, timestamp, event_type, event_data
+      ) VALUES (?, ?, ?, ?)
+    `, [
+      deviceId,
+      batchTimestamp,
+      `${log.tag}:${log.lvl}`,
+      JSON.stringify({ ts: log.ts, msg: log.msg })
+    ]);
 
-  // Handle specific events
-  switch (payload.event_type) {
-    case 'watchdog_reset':
-      await createAlert(deviceId, 'watchdog_reset', payload.event_data);
-      break;
-    case 'ota_failed':
-      await notifyOTAOrchestrator(deviceId, 'failed', payload.event_data);
-      break;
-    case 'error':
-      if (payload.event_data.code >= 500) {
-        await createAlert(deviceId, 'critical_error', payload.event_data);
-      }
-      break;
+    // Handle specific events based on tag and level
+    if (log.tag === 'MAIN' && log.msg.startsWith('watchdog_reset')) {
+      await createAlert(deviceId, 'watchdog_reset', { message: log.msg });
+    }
+    if (log.tag === 'OTA' && log.msg.startsWith('ota_failed')) {
+      await notifyOTAOrchestrator(deviceId, 'failed', { message: log.msg });
+    }
+    if (log.lvl === 'E') {
+      await createAlert(deviceId, 'error', { tag: log.tag, message: log.msg });
+    }
   }
+}
+```
+
+### 4.4 Device State Update
+
+```typescript
+async function updateDeviceState(
+  deviceId: string,
+  payload: TelemetryPayload
+): Promise<void> {
+  await db.execute(`
+    UPDATE devices
+    SET online = 1,
+        last_seen = ?,
+        wifi_rssi = ?,
+        firmware_version = ?
+    WHERE device_id = ?
+  `, [
+    payload.timestamp,
+    payload.metrics['system.wifi_rssi'] ?? null,
+    payload.firmware_version ?? null,
+    deviceId
+  ]);
 }
 ```
 

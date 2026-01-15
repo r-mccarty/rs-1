@@ -171,20 +171,26 @@ typedef struct __attribute__((packed)) {
 
 ### 5.3 Cloud Format (JSON)
 
+Per `../contracts/SCHEMA_TELEMETRY.json`:
+
 ```json
 {
-    "device_id": "rs1-aabbccdd",
-    "timestamp": 1704912345,
+    "device_id": "aabbccddeeff00112233445566778899",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "metrics": {
+        "system.uptime_sec": 86400,
+        "system.free_heap": 45678,
+        "system.wifi_rssi": -55,
+        "radar.frames_received": 12345,
+        "zone.occupancy_changes": 42
+    },
     "logs": [
         {"ts": 12345, "lvl": "W", "tag": "ZONE", "msg": "Flicker detected"}
-    ],
-    "metrics": {
-        "radar.frames_received": 12345,
-        "zone.occupancy_changes": 42,
-        "system.free_heap": 45678
-    }
+    ]
 }
 ```
+
+**Note:** `device_id` is 32-char hex (SHA-256 derived from MAC). `timestamp` is ISO 8601.
 
 ## 6. Telemetry Metrics
 

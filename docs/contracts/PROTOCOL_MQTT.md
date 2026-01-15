@@ -321,7 +321,7 @@ See: `SCHEMA_DEVICE_STATE.json`
 
 ```json
 {
-  "device_id": "a1b2c3d4e5f6",
+  "device_id": "a1b2c3d4e5f600112233445566778899",
   "mac_address": "AA:BB:CC:D4:E5:F6",
   "firmware_version": "1.0.0",
   "timestamp": "2026-01-13T10:00:00Z"
@@ -330,7 +330,7 @@ See: `SCHEMA_DEVICE_STATE.json`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `device_id` | string | Yes | 12-char hex device identifier |
+| `device_id` | string | Yes | 32-char hex device identifier (SHA-256 derived from MAC) |
 | `mac_address` | string | Yes | Full MAC address (AA:BB:CC:DD:EE:FF) |
 | `firmware_version` | string | Yes | Current firmware version (semver) |
 | `timestamp` | string | Yes | ISO 8601 timestamp |
@@ -343,7 +343,7 @@ Cloud uses `mac_address` to lookup owner in purchase records database.
 ```json
 {
   "status": "registered",
-  "device_id": "a1b2c3d4e5f6",
+  "device_id": "a1b2c3d4e5f600112233445566778899",
   "owner": "user_abc123",
   "timestamp": "2026-01-13T10:00:01Z"
 }
@@ -353,7 +353,7 @@ Cloud uses `mac_address` to lookup owner in purchase records database.
 ```json
 {
   "status": "registered",
-  "device_id": "a1b2c3d4e5f6",
+  "device_id": "a1b2c3d4e5f600112233445566778899",
   "owner": null,
   "timestamp": "2026-01-13T10:00:01Z"
 }
@@ -362,7 +362,7 @@ Cloud uses `mac_address` to lookup owner in purchase records database.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `status` | enum | Yes | `registered` (provisioning always succeeds) |
-| `device_id` | string | Yes | Device identifier |
+| `device_id` | string | Yes | 32-char hex device identifier |
 | `owner` | string | No | User ID if found in purchase records (null otherwise) |
 | `timestamp` | string | Yes | ISO 8601 timestamp |
 

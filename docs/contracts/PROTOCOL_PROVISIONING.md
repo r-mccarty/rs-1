@@ -84,13 +84,15 @@ This document defines the complete provisioning flow for RS-1 devices, from fact
 QR codes use a custom URI scheme with web fallback:
 
 ```
-opticworks://setup?d={device_id}&ap={ap_ssid}
+opticworks://setup?d={mac_suffix}&ap={ap_ssid}
 ```
 
 | Parameter | Format | Example | Description |
 |-----------|--------|---------|-------------|
-| `d` | 12-char hex | `a1b2c3d4e5f6` | Device ID (last 6 bytes of MAC, hex-encoded) |
-| `ap` | String | `OpticWorks-E5F6` | AP SSID (always `OpticWorks-` + last 4 of device_id) |
+| `d` | 12-char hex | `a1b2c3d4e5f6` | MAC suffix (last 6 bytes of MAC, hex-encoded) - used for AP lookup |
+| `ap` | String | `OpticWorks-E5F6` | AP SSID (always `OpticWorks-` + last 4 of MAC suffix) |
+
+**Note:** The `d` parameter is the MAC suffix, NOT the device_id. The actual `device_id` used in MQTT and cloud is a 32-char SHA-256 derived hash (see Section 7.1).
 
 **Example QR payload:**
 ```
@@ -120,14 +122,23 @@ QR codes are printed on device labels during manufacturing:
 
 ```typescript
 function generateProvisioningQR(macAddress: string): string {
-  // Extract last 6 bytes of MAC
-  const deviceId = macAddress.replace(/:/g, '').toLowerCase().slice(-12);
+  // Extract last 6 bytes of MAC for QR code (human-readable suffix)
+  const macSuffix = macAddress.replace(/:/g, '').toLowerCase().slice(-12);
 
-  // Generate AP SSID (last 4 chars of device_id)
-  const apSuffix = deviceId.slice(-4).toUpperCase();
+  // Generate AP SSID (last 4 chars of MAC suffix)
+  const apSuffix = macSuffix.slice(-4).toUpperCase();
   const apSsid = `OpticWorks-${apSuffix}`;
 
-  return `opticworks://setup?d=${deviceId}&ap=${apSsid}`;
+  return `opticworks://setup?d=${macSuffix}&ap=${apSsid}`;
+}
+
+// Device ID derivation (used in MQTT topics and cloud)
+function deriveDeviceId(macAddress: string): string {
+  const normalized = macAddress.replace(/:/g, '').toLowerCase();
+  const hash = crypto.createHash('sha256')
+    .update(normalized + 'opticworks-rs1')
+    .digest('hex');
+  return hash.substring(0, 32); // 32-char device_id
 }
 ```
 
@@ -206,7 +217,8 @@ Host: 192.168.4.1
 **Response:**
 ```json
 {
-  "device_id": "a1b2c3d4e5f6",
+  "device_id": "a1b2c3d4e5f600112233445566778899",
+  "mac_suffix": "d4e5f6",
   "firmware_version": "1.0.0",
   "hardware_version": "1.0",
   "product": "RS-1",
@@ -218,7 +230,8 @@ Host: 192.168.4.1
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `device_id` | string | 12-char hex device identifier |
+| `device_id` | string | 32-char hex device identifier (SHA-256 derived from MAC) |
+| `mac_suffix` | string | 6-char hex MAC suffix (last 3 bytes, for display/AP naming) |
 | `firmware_version` | string | Semantic version of firmware |
 | `hardware_version` | string | Hardware revision |
 | `product` | string | Product name (`RS-1`) |
@@ -455,10 +468,12 @@ After WiFi connection, device publishes to registration topic:
 **QoS:** 1
 **Retain:** No
 
+**Note:** `{device_id}` is the 32-char SHA-256 derived identifier (see Section 3.4).
+
 **Payload:**
 ```json
 {
-  "device_id": "a1b2c3d4e5f6",
+  "device_id": "a1b2c3d4e5f600112233445566778899",
   "mac_address": "AA:BB:CC:D4:E5:F6",
   "firmware_version": "1.0.0",
   "timestamp": "2026-01-13T10:00:00Z"
@@ -467,7 +482,7 @@ After WiFi connection, device publishes to registration topic:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `device_id` | string | Yes | 12-char hex device identifier |
+| `device_id` | string | Yes | 32-char hex device identifier (SHA-256 derived) |
 | `mac_address` | string | Yes | Full MAC address |
 | `firmware_version` | string | Yes | Current firmware version |
 | `timestamp` | string | Yes | ISO 8601 timestamp |
@@ -506,7 +521,7 @@ Cloud responds on:
 ```json
 {
   "status": "registered",
-  "device_id": "a1b2c3d4e5f6",
+  "device_id": "a1b2c3d4e5f600112233445566778899",
   "owner": "user_abc123",
   "timestamp": "2026-01-13T10:00:01Z"
 }
@@ -516,7 +531,7 @@ Cloud responds on:
 ```json
 {
   "status": "registered",
-  "device_id": "a1b2c3d4e5f6",
+  "device_id": "a1b2c3d4e5f600112233445566778899",
   "owner": null,
   "timestamp": "2026-01-13T10:00:01Z"
 }
