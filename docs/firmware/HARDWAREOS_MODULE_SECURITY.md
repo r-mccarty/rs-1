@@ -15,7 +15,7 @@ Provide security services for RS-1 including firmware signature validation, secu
 
 | ID | Assumption | Impact if Changed |
 |----|------------|-------------------|
-| A1 | ESP32-C3 Secure Boot V2 is available | Boot chain security |
+| A1 | ESP32-WROOM-32E Secure Boot V2 is available | Boot chain security |
 | A2 | Flash encryption is optional for MVP | Key provisioning complexity |
 | A3 | TLS 1.2+ is required for all network traffic | mbedTLS configuration |
 | A4 | ECDSA P-256 for firmware signing | Signature verification code |
@@ -47,7 +47,7 @@ Authentication for Native API and local HTTP endpoints.
 
 ## 4. Boot Security
 
-### 4.1 Secure Boot V2 (ESP32-C3)
+### 4.1 Secure Boot V2 (ESP32-WROOM-32E)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -433,7 +433,7 @@ typedef struct {
 
 ### 11.2 eFuse Counter
 
-ESP32-C3 provides 32 bits for anti-rollback. Each security update burns one bit:
+ESP32-WROOM-32E provides 32 bits for anti-rollback. Each security update burns one bit:
 
 ```c
 uint32_t current_version = esp_efuse_read_field_cnt(ESP_EFUSE_SECURE_VERSION);

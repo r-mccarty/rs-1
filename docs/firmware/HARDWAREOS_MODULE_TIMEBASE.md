@@ -18,7 +18,7 @@ Provide stable timing services, frame synchronization, and task scheduling for t
 | A1 | ESP-IDF FreeRTOS is the RTOS | Task primitives, timer APIs |
 | A2 | LD2450 frame rate is ~33 Hz (30ms) | Frame timing expectations |
 | A3 | Processing pipeline runs at 10 Hz (100ms throttled) | Scheduler tick rate |
-| A4 | Single-core operation on ESP32-C3 | No SMP considerations |
+| A4 | Dual-core operation on ESP32-WROOM-32E with task pinning | Core 0: network, Core 1: radar processing |
 | A5 | Watchdog timeout of 5 seconds is acceptable | Recovery time |
 | A6 | NTP is available for wall-clock time (optional) | Timestamp accuracy |
 | A7 | System uptime is tracked in milliseconds | Overflow at ~49 days |

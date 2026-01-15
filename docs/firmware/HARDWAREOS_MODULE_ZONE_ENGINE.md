@@ -9,6 +9,8 @@ Status: Draft
 
 Map confirmed tracks from M02 Tracking to user-defined polygon zones and emit per-zone occupancy states. The Zone Engine is the bridge between raw tracking data and meaningful presence events for Home Assistant.
 
+**Variant Note:** This module is **only active in RS-1 Pro**. RS-1 Lite uses binary presence from LD2410 and bypasses M02/M03 entirely (pipeline: M01→M04→M05).
+
 ## 2. Assumptions
 
 > **Staleness Warning**: If any assumption changes, revisit the requirements in this document.
@@ -22,7 +24,7 @@ Map confirmed tracks from M02 Tracking to user-defined polygon zones and emit pe
 | A5 | Include zones take precedence over exclude zones | Zone priority logic |
 | A6 | M02 provides confirmed tracks only (not tentative) | No additional filtering needed |
 | A7 | Zone updates are atomic (full config replace) | No incremental zone editing |
-| A8 | ESP32-C3 has sufficient RAM for ~16 zones | Memory budget |
+| A8 | ESP32-WROOM-32E has sufficient RAM for ~24 zones | Memory budget |
 
 ## 3. Inputs
 
@@ -265,4 +267,4 @@ bool is_simple_polygon(int16_t vertices[][2], uint8_t count) {
 
 - Should zone sensitivity affect point-in-polygon (margin expansion)?
 - How to handle track straddling zone boundary (centroid vs any part)?
-- Define maximum practical zone count for ESP32-C3 memory budget.
+- Define maximum practical zone count for ESP32-WROOM-32E memory budget (~24 zones).

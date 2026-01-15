@@ -15,13 +15,24 @@ Apply hysteresis, hold timers, and confidence-based smoothing to raw zone occupa
 
 | ID | Assumption | Impact if Changed |
 |----|------------|-------------------|
-| A1 | Frame rate from M03 is **33 Hz** (radar frame rate) | Timer granularity, hold time precision |
-| A2 | Occlusions typically last < 2 seconds | Default hold time selection |
+| A1 | Frame rate from M03 is **33 Hz** (Pro) or **~5 Hz** (Lite) | Timer granularity, hold time precision |
+| A2 | Occlusions typically last < 2 seconds | Default hold time selection (Pro only) |
 | A3 | Users prefer false occupancy over false vacancy | Bias toward longer holds |
 | A4 | Sensitivity is exposed as a single slider (0-100) | Parameter mapping complexity |
-| A5 | Per-zone sensitivity is supported | Storage per zone |
-| A6 | M02 Tracking provides confidence scores | Confidence-weighted smoothing |
+| A5 | Per-zone sensitivity is supported (Pro only) | Storage per zone |
+| A6 | M02 Tracking provides confidence scores (Pro only) | Confidence-weighted smoothing |
 | A7 | Home Assistant polls state, not events | State-based output design |
+| A8 | Product variant: Lite or Pro | Different input sources and behavior |
+
+### 2.1 Variant Behavior
+
+| Aspect | RS-1 Lite | RS-1 Pro |
+|--------|-----------|----------|
+| **Input** | Binary presence from M01 | Zone occupancy from M03 |
+| **Frame Rate** | ~5 Hz | 33 Hz |
+| **Confidence Weighting** | N/A | Uses track confidence |
+| **Per-Zone Sensitivity** | N/A (single room) | Per-zone configurable |
+| **Hold Time Default** | Longer (lower frame rate) | Standard |
 
 ## 3. Inputs
 

@@ -1,7 +1,7 @@
 # HardwareOS Specification (RS-1)
 
-Version: 0.2
-Date: 2026-01-08
+Version: 0.3
+Date: 2026-01-15
 Owner: OpticWorks Firmware
 Status: Draft
 
@@ -9,7 +9,7 @@ Status: Draft
 
 ## 1. Overview
 
-HardwareOS is the custom firmware stack for RS-1 that transforms raw LD2450 radar data into stable, zone-based presence events for Home Assistant. It provides a complete pipeline from hardware interface to cloud connectivity, with a focus on reliability, testability, and seamless smart home integration.
+HardwareOS is the custom firmware stack for RS-1 that transforms radar data into stable, zone-based presence events for Home Assistant. It supports two product variants (RS-1 Lite and RS-1 Pro) with different radar configurations and processing pipelines. The firmware provides a complete pipeline from hardware interface to cloud connectivity, with a focus on reliability, testability, and seamless smart home integration.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -48,20 +48,68 @@ HardwareOS is the custom firmware stack for RS-1 that transforms raw LD2450 rada
 | **Maintainable** | Clear module boundaries with testable interfaces |
 | **Secure** | Signed firmware, encrypted transport, secure boot chain |
 
-## 3. Non-Goals (MVP)
+## 3. Product Variants
 
-- Multi-sensor fusion (single radar only)
-- Full mobile app (zone editor is web-based)
-- Cloud analytics dashboard (telemetry hooks only)
-- 3D presence detection (2D zones only)
+RS-1 ships in two variants with different radar configurations:
+
+| Variant | Radar | Capabilities | Target Use |
+|---------|-------|--------------|------------|
+| **RS-1 Lite** | LD2410 | Binary presence detection | Utility rooms (bathrooms, hallways, closets) |
+| **RS-1 Pro** | LD2410 + LD2450 | Dual radar fusion, zone tracking | Living spaces (living rooms, kitchens, bedrooms) |
+
+### 3.1 Module Activation by Variant
+
+| Module | Lite | Pro | Notes |
+|--------|------|-----|-------|
+| M01 Radar Ingest | LD2410 parser | LD2450 parser | Different protocols |
+| M02 Tracking | **Disabled** | Full Kalman | Not compiled for Lite |
+| M03 Zone Engine | **Disabled** | Full | Not compiled for Lite |
+| M04 Smoothing | Basic | Full | Lite: simplified hold time |
+| M05-M11 | Same | Same | Hardware-agnostic |
+
+### 3.2 Lite Processing Pipeline
+
+```
+RS-1 Lite: M01 (LD2410) ──▶ M04 (Smoothing) ──▶ M05 (Native API)
+                                │
+                                └── Binary presence only, no zone tracking
+```
+
+### 3.3 Pro Processing Pipeline
+
+```
+RS-1 Pro: M01 (LD2450) ──▶ M02 (Tracking) ──▶ M03 (Zone Engine) ──▶ M04 ──▶ M05
+                                │
+                                └── Full tracking with coordinates and zones
+```
+
+### 3.4 SMP Architecture (Dual-Core)
+
+ESP32-WROOM-32E is dual-core. Tasks are pinned to cores for optimal performance:
+
+| Core | Tasks | Rationale |
+|------|-------|-----------|
+| **Core 0** | Wi-Fi stack, M05 Native API, M07 OTA, M09 Logging | Network-bound operations |
+| **Core 1** | M01 Radar Ingest, M02 Tracking, M04 Smoothing | Time-critical radar processing |
+
+This prevents TLS handshakes (~500ms) from blocking radar frame processing (33 Hz).
 
 ---
 
-## 4. System Architecture
+## 4. Non-Goals (MVP)
 
-### 4.1 Data Flow Pipeline
+- Full mobile app (zone editor is web-based)
+- Cloud analytics dashboard (telemetry hooks only)
+- 3D presence detection (2D zones only)
+- LD2410 zone tracking (Lite variant uses binary presence only)
 
-The core processing pipeline runs at radar frame rate (~33 Hz) with throttled output to Home Assistant (~10 Hz):
+---
+
+## 5. System Architecture
+
+### 5.1 Data Flow Pipeline (RS-1 Pro)
+
+The core processing pipeline runs at radar frame rate (~33 Hz) with throttled output to Home Assistant (~10 Hz). **Note:** This pipeline is for RS-1 Pro only. RS-1 Lite uses a simplified M01→M04→M05 path (see Section 3).
 
 ```
                                     CORE DATA PATH
@@ -94,7 +142,7 @@ The core processing pipeline runs at radar frame rate (~33 Hz) with throttled ou
     ════════════════════════════════════════════════════════════════════════
 ```
 
-### 4.2 Module Layers
+### 5.2 Module Layers
 
 ```
     ┌─────────────────────────────────────────────────────────────────────┐
@@ -142,7 +190,7 @@ The core processing pipeline runs at radar frame rate (~33 Hz) with throttled ou
     └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.3 Zone Processing Detail
+### 5.3 Zone Processing Detail (RS-1 Pro)
 
 ```
                               ZONE PROCESSING FLOW
@@ -207,9 +255,9 @@ The core processing pipeline runs at radar frame rate (~33 Hz) with throttled ou
 
 ---
 
-## 5. Module Index
+## 6. Module Index
 
-### 5.1 Core Data Path
+### 6.1 Core Data Path
 
 These modules process radar data into presence events:
 
@@ -220,7 +268,7 @@ These modules process radar data into presence events:
 | **M03** | Zone Engine | Map tracks to polygon zones, determine occupancy | [HARDWAREOS_MODULE_ZONE_ENGINE.md](HARDWAREOS_MODULE_ZONE_ENGINE.md) |
 | **M04** | Presence Smoothing | Apply hysteresis and hold logic for stable output | [HARDWAREOS_MODULE_PRESENCE_SMOOTHING.md](HARDWAREOS_MODULE_PRESENCE_SMOOTHING.md) |
 
-### 5.2 External Interfaces
+### 6.2 External Interfaces
 
 These modules handle communication with external systems:
 
@@ -230,7 +278,7 @@ These modules handle communication with external systems:
 | **M07** | OTA Manager | Cloud-triggered updates with rollback | [HARDWAREOS_MODULE_OTA.md](HARDWAREOS_MODULE_OTA.md) |
 | **M11** | Zone Editor Interface | Zone config sync and live target streaming | [HARDWAREOS_MODULE_ZONE_EDITOR.md](HARDWAREOS_MODULE_ZONE_EDITOR.md) |
 
-### 5.3 System Services
+### 6.3 System Services
 
 These modules provide infrastructure for all other modules:
 
@@ -243,7 +291,7 @@ These modules provide infrastructure for all other modules:
 
 ---
 
-## 6. Module Responsibilities
+## 7. Module Responsibilities
 
 ### M01 Radar Ingest
 
@@ -359,7 +407,7 @@ These modules provide infrastructure for all other modules:
 
 ---
 
-## 7. Inter-Module Communication
+## 8. Inter-Module Communication
 
 ```
     ┌─────────────────────────────────────────────────────────────────────┐
@@ -408,31 +456,35 @@ These modules provide infrastructure for all other modules:
 
 ---
 
-## 8. Hardware Platform
+## 9. Hardware Platform
 
-### 8.1 Target Hardware
+### 9.1 Target Hardware
 
 | Component | Specification |
 |-----------|---------------|
-| **MCU** | ESP32-C3-MINI-1 (RISC-V, 160MHz, 400KB SRAM, 4MB Flash) |
-| **Radar** | HiLink LD2450 (24GHz FMCW, 3 targets, 6m range) |
-| **Interface** | UART @ 256000 baud |
+| **MCU** | ESP32-WROOM-32E (Xtensa LX6 dual-core, 240MHz, 520KB SRAM, 8MB Flash) |
+| **Radar (Lite)** | HiLink LD2410 (24GHz FMCW, binary presence) |
+| **Radar (Pro)** | HiLink LD2450 (24GHz FMCW, 3 targets, 6m range) |
+| **Interface** | UART @ 256000 baud (LD2450), TBD (LD2410) |
+| **USB** | CH340N USB-UART bridge |
 | **Power** | USB-C, 5V |
+| **Ethernet** | Optional RMII PHY (SR8201F) for PoE variant |
 
-### 8.2 Resource Budget
+### 9.2 Resource Budget
 
 | Resource | Budget | Usage |
 |----------|--------|-------|
-| Flash (App) | 1.5 MB | Firmware image |
+| Flash (App) | 3 MB | Firmware image |
 | Flash (NVS) | 16 KB | Configuration |
-| Flash (OTA) | 1.5 MB | OTA partition |
-| RAM (Heap) | 200 KB | Runtime allocations |
+| Flash (OTA) | 3 MB | OTA partition |
+| Flash (Logs) | 256 KB | Persistent logs |
+| RAM (Heap) | ~250 KB | Runtime allocations |
 | RAM (Stack) | 16 KB | Task stacks |
 
-### 8.3 Memory Map
+### 9.3 Memory Map
 
 ```
-    Flash Layout (4MB)
+    Flash Layout (8MB)
     ┌──────────────────────────┐ 0x000000
     │     Bootloader (32KB)    │
     ├──────────────────────────┤ 0x008000
@@ -443,38 +495,40 @@ These modules provide infrastructure for all other modules:
     │    OTA Data (8KB)        │  ◀── M07 OTA state
     ├──────────────────────────┤ 0x00F000
     │      App OTA_0           │
-    │      (1.5MB)             │  ◀── Active firmware
-    ├──────────────────────────┤ 0x18F000
-    │      App OTA_1           │
-    │      (1.5MB)             │  ◀── Update partition
+    │      (3MB)               │  ◀── Active firmware
     ├──────────────────────────┤ 0x30F000
-    │    SPIFFS/Logs (64KB)    │  ◀── M09 persistent logs
-    ├──────────────────────────┤ 0x31F000
+    │      App OTA_1           │
+    │      (3MB)               │  ◀── Update partition
+    ├──────────────────────────┤ 0x60F000
+    │    SPIFFS/Logs (256KB)   │  ◀── M09 persistent logs
+    ├──────────────────────────┤ 0x64F000
     │      Reserved            │
-    └──────────────────────────┘ 0x400000
+    └──────────────────────────┘ 0x800000
 ```
 
 ---
 
-## 9. Key Assumptions
+## 10. Key Assumptions
 
 These assumptions underpin the module specifications. If any change, review the affected modules.
 
 | ID | Assumption | Affects |
 |----|------------|---------|
-| A1 | LD2450 frame rate is ~33 Hz (30ms interval) | M01, M02, M08 |
-| A2 | LD2450 reports max 3 targets per frame | M01, M02, M03 |
-| A3 | Coordinate range: X ±6000mm, Y 0-6000mm | M01, M03 |
-| A4 | ESP32-C3 single-core operation | M08 (no SMP) |
+| A1 | LD2450 frame rate is ~33 Hz (30ms interval) | M01, M02, M08 (Pro only) |
+| A2 | LD2450 reports max 3 targets per frame | M01, M02, M03 (Pro only) |
+| A3 | Coordinate range: X ±6000mm, Y 0-6000mm | M01, M03 (Pro only) |
+| A4 | ESP32-WROOM-32E dual-core with task pinning | M08 (Core 0: network, Core 1: radar) |
 | A5 | ESPHome Native API v1.9+ | M05 |
 | A6 | Home Assistant 2024.1+ | M05 |
 | A7 | MQTT for cloud (OTA, telemetry) | M07, M09 |
-| A8 | Typical occlusions < 2 seconds | M04 |
+| A8 | Typical occlusions < 2 seconds | M04 (Pro only) |
 | A9 | User prefers false occupancy over false vacancy | M04 |
+| A10 | Product variant: Lite (LD2410) or Pro (LD2450) | M01, M02, M03, M04 |
+| A11 | LD2410 protocol details TBD | M01 (Lite) |
 
 ---
 
-## 10. External Dependencies
+## 11. External Dependencies
 
 | Dependency | Version | Modules | Purpose |
 |------------|---------|---------|---------|
@@ -487,9 +541,9 @@ These assumptions underpin the module specifications. If any change, review the 
 
 ---
 
-## 11. Testing Strategy
+## 12. Testing Strategy
 
-### 11.1 Test Levels
+### 12.1 Test Levels
 
 ```
     ┌─────────────────────────────────────────────────────────────────────┐
@@ -509,7 +563,7 @@ These assumptions underpin the module specifications. If any change, review the 
     └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 11.2 CI/CD Integration
+### 12.2 CI/CD Integration
 
 - Unit tests run on every commit
 - Integration tests run on PR merge
@@ -517,7 +571,7 @@ These assumptions underpin the module specifications. If any change, review the 
 
 ---
 
-## 12. Open Questions
+## 13. Open Questions
 
 | Question | Owner | Status |
 |----------|-------|--------|
@@ -529,9 +583,10 @@ These assumptions underpin the module specifications. If any change, review the 
 
 ---
 
-## 13. Document History
+## 14. Document History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1 | 2026-01-XX | OpticWorks | Initial draft |
 | 0.2 | 2026-01-08 | OpticWorks | Added ASCII diagrams, module links, architecture details |
+| 0.3 | 2026-01-15 | OpticWorks | Updated MCU to ESP32-WROOM-32E, added Lite/Pro variant strategy, SMP architecture |

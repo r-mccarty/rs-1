@@ -42,10 +42,23 @@ This document defines the module initialization order, dependencies, and failure
 |-------|------|---------|--------------|
 | 0 | ESP-IDF | Bootloader, FreeRTOS, drivers | 500ms |
 | 1 | Core Services | M08 Timebase, M09 Logging | 50ms |
-| 2 | Configuration | M06 Config Store, M10 Security | 100ms |
+| 2 | Configuration | M06 Config Store, M10 Security, Variant Detection | 100ms |
 | 3 | Network | Wi-Fi, mDNS | 200ms |
-| 4 | Processing | M01 Radar, M02 Tracking, M03 Zone, M04 Smoothing | 50ms |
+| 4 | Processing | M01 Radar, M02 Tracking*, M03 Zone*, M04 Smoothing | 50ms |
 | 5 | Interfaces | M05 Native API, M07 OTA, M11 Zone Editor | 100ms |
+
+*M02/M03 only initialized for RS-1 Pro variant. RS-1 Lite skips these modules.
+
+### 2.3 Variant-Aware Initialization
+
+The boot sequence detects the product variant during Phase 2 and adjusts module initialization:
+
+| Variant | Processing Pipeline | Skipped Modules |
+|---------|---------------------|-----------------|
+| **RS-1 Lite** | M01 → M04 → M05 | M02 Tracking, M03 Zone Engine |
+| **RS-1 Pro** | M01 → M02 → M03 → M04 → M05 | None |
+
+Variant detection reads from NVS configuration set during manufacturing/provisioning.
 
 ---
 

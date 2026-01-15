@@ -16,7 +16,7 @@ Provide persistent, atomic, and versioned storage for device configuration inclu
 | ID | Assumption | Impact if Changed |
 |----|------------|-------------------|
 | A1 | ESP-IDF NVS library is the storage backend | API surface, wear leveling |
-| A2 | ESP32-C3 has 4MB flash with ~16KB NVS partition | Storage limits |
+| A2 | ESP32-WROOM-32E has 8MB flash with ~16KB NVS partition | Storage limits |
 | A3 | Zone config is < 4KB total | Single NVS blob vs chunking |
 | A4 | Config updates are infrequent (< 10/day); NVS commits only on actual changes | Flash wear (~100K cycles = 27 years at 10/day) |
 | A5 | Atomic updates are required (no partial writes) | Transaction implementation |

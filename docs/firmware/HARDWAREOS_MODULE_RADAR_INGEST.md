@@ -15,21 +15,34 @@ Parse raw LD2450 UART frames into normalized detection data and deliver timestam
 
 | ID | Assumption | Impact if Changed |
 |----|------------|-------------------|
-| A1 | LD2450 outputs at ~33 Hz (30ms frame interval) | Frame timing, buffer sizing, downstream rate assumptions |
-| A2 | UART baud rate is 256000 | Serial configuration, parse timing |
-| A3 | Maximum 3 targets per frame | Buffer allocation, data structures |
-| A4 | Coordinate range: X ±6000mm, Y 0–6000mm | Normalization bounds, zone engine constraints |
-| A5 | Speed range: -128 to +127 cm/s | Velocity filtering thresholds |
-| A6 | ESP32-C3-MINI-1 is the target MCU | Memory constraints, UART peripheral config |
-| A7 | Single LD2450 sensor per device | No multi-sensor fusion in this module |
+| A1 | LD2450 outputs at ~33 Hz (30ms frame interval) | Frame timing, buffer sizing, downstream rate assumptions (Pro only) |
+| A2 | UART baud rate is 256000 (LD2450); TBD (LD2410) | Serial configuration, parse timing |
+| A3 | Maximum 3 targets per frame (LD2450) | Buffer allocation, data structures (Pro only) |
+| A4 | Coordinate range: X ±6000mm, Y 0–6000mm | Normalization bounds, zone engine constraints (Pro only) |
+| A5 | Speed range: -128 to +127 cm/s | Velocity filtering thresholds (Pro only) |
+| A6 | ESP32-WROOM-32E is the target MCU | Memory constraints, UART peripheral config |
+| A7 | Product variant: Lite (LD2410) or Pro (LD2450) | Different protocol parsers per variant |
+| A8 | LD2410 protocol details TBD | Lite variant implementation |
 
 ## 3. Inputs
 
 ### 3.1 Hardware Interface
 
-- **UART RX**: LD2450 TX pin connected to ESP32-C3 UART RX.
-- **Baud Rate**: 256000.
-- **Frame Format**: Binary frames per LD2450 protocol specification.
+- **UART RX**: Radar TX pin connected to ESP32-WROOM-32E UART RX.
+- **Baud Rate**: 256000 (LD2450); TBD (LD2410).
+- **Frame Format**: Binary frames per radar protocol specification.
+- **Core Affinity**: Pinned to Core 1 for time-critical processing (see SMP Architecture in README.md).
+
+### 3.1.1 Variant Differences
+
+| Aspect | RS-1 Lite (LD2410) | RS-1 Pro (LD2450) |
+|--------|-------------------|-------------------|
+| **Radar** | LD2410 (binary presence) | LD2450 (3 targets, coordinates) |
+| **Frame Rate** | ~5 Hz (TBD) | 33 Hz |
+| **Output** | Binary presence | Up to 3 targets with (x, y, speed) |
+| **Downstream** | M01 → M04 → M05 | M01 → M02 → M03 → M04 → M05 |
+
+**Note:** LD2410 protocol details TBD. For now, this spec focuses on LD2450 (Pro variant).
 
 ### 3.2 Frame Structure (LD2450 Protocol)
 

@@ -102,12 +102,33 @@ Rollback triggers:
 - Serial flashing via USB-to-serial as the manual recovery path.
 - Fallback path available when MQTT or cloud is unreachable.
 
-## Partition Layout (ESP32-C3-MINI-1)
+## Partition Layout (ESP32-WROOM-32E)
 
-- ESP32-C3FH4: 4 MB flash, 384 kB ROM, 408 kB SRAM.
+- ESP32-WROOM-32E-N8: 8 MB flash, 520 KB SRAM.
 - Dual OTA partitions sized for the target max firmware size.
-- Recommended initial target: <= 1.5 MB app size per OTA partition.
+- Recommended initial target: <= 3 MB app size per OTA partition.
 - Reserve NVS and OTA data partitions per ESP-IDF guidelines.
+
+```
+Flash Layout (8MB)
+┌──────────────────────────┐ 0x000000
+│     Bootloader (32KB)    │
+├──────────────────────────┤ 0x008000
+│   Partition Table (4KB)  │
+├──────────────────────────┤ 0x009000
+│       NVS (16KB)         │
+├──────────────────────────┤ 0x00D000
+│    OTA Data (8KB)        │
+├──────────────────────────┤ 0x00F000
+│      App OTA_0 (3MB)     │  ◀── Active firmware
+├──────────────────────────┤ 0x30F000
+│      App OTA_1 (3MB)     │  ◀── Update partition
+├──────────────────────────┤ 0x60F000
+│    SPIFFS/Logs (256KB)   │
+├──────────────────────────┤ 0x64F000
+│      Reserved            │
+└──────────────────────────┘ 0x800000
+```
 
 ## Open Questions
 

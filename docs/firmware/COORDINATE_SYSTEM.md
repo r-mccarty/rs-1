@@ -13,6 +13,15 @@ This document defines the canonical coordinate system used throughout HardwareOS
 
 **This is the authoritative reference for coordinate handling.** If any module specification conflicts with this document, this document takes precedence.
 
+### 1.1 Variant Applicability
+
+| Variant | Radar | Coordinate Support | Notes |
+|---------|-------|-------------------|-------|
+| **RS-1 Lite** | LD2410 | **None** | Binary presence only (occupied/vacant) |
+| **RS-1 Pro** | LD2450 | **Full** | X, Y, velocity for up to 3 targets |
+
+**Important:** This coordinate specification applies primarily to **RS-1 Pro**. RS-1 Lite uses the LD2410 radar which outputs only binary presence detection (no target positions or zones). Modules M02 (Tracking) and M03 (Zone Engine) are disabled for Lite variant.
+
 ---
 
 ## 2. Canonical Units

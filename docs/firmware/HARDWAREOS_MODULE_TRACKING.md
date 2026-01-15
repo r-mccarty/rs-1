@@ -26,8 +26,11 @@ Provide robust multi-target tracking under occlusion and multipath using a Kalma
 | A3 | Coordinate range: X ±6000mm, Y 0-6000mm | Gate distance calculations |
 | A4 | Typical human walking speed: 0.5-1.5 m/s | Gate distance, prediction tuning |
 | A5 | Typical occlusions last < 2 seconds | Hold time, track retirement |
-| A6 | ESP32-C3 single-core, 160 MHz | CPU budget constraints |
+| A6 | ESP32-WROOM-32E dual-core, 240 MHz | CPU budget constraints (runs on Core 1) |
 | A7 | Kalman filter is the mandated tracking algorithm | Implementation choice |
+| A8 | **RS-1 Pro variant only** | Module disabled for Lite variant |
+
+**Variant Note:** This module is **only active in RS-1 Pro**. RS-1 Lite uses binary presence from LD2410 and bypasses M02/M03, going directly from M01 to M04.
 
 ---
 

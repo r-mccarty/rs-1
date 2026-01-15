@@ -1,7 +1,7 @@
 # HardwareOS Memory Budget Specification
 
-Version: 0.1
-Date: 2026-01-09
+Version: 0.2
+Date: 2026-01-15
 Owner: OpticWorks Firmware
 Status: Draft
 
@@ -9,27 +9,29 @@ Status: Draft
 
 ## 1. Purpose
 
-This document provides a unified memory budget for HardwareOS on the ESP32-C3-MINI-1 platform. It consolidates resource requirements from all modules and identifies constraints that affect system design decisions.
+This document provides a unified memory budget for HardwareOS on the ESP32-WROOM-32E platform. It consolidates resource requirements from all modules and identifies constraints that affect system design decisions.
 
 **Critical:** This document addresses RFD-001 issue C4 (TLS memory not budgeted). TLS connections require significant heap memory that was previously unaccounted for.
+
+**Note:** The memory budget differs between RS-1 Lite and RS-1 Pro variants. Pro requires M02/M03 modules; Lite disables them, reducing memory footprint.
 
 ---
 
 ## 2. Hardware Constraints
 
-### 2.1 ESP32-C3-MINI-1 Resources
+### 2.1 ESP32-WROOM-32E Resources
 
 | Resource | Total | Notes |
 |----------|-------|-------|
-| **Flash** | 4 MB | Partitioned for app, OTA, NVS, logs |
-| **SRAM** | 400 KB | Shared between heap and stack |
-| **Heap** | ~200 KB | Available after ESP-IDF and stack |
+| **Flash** | 8 MB | Partitioned for app, OTA, NVS, logs |
+| **SRAM** | 520 KB | Shared between heap and stack |
+| **Heap** | ~250 KB | Available after ESP-IDF and stack |
 | **Stack** | 16 KB | FreeRTOS task stacks |
 
 ### 2.2 Flash Partition Layout
 
 ```
-Flash Layout (4MB = 0x400000)
+Flash Layout (8MB = 0x800000)
 ════════════════════════════════════════════════════════════
 
 ┌──────────────────────────────┐ 0x000000
@@ -42,17 +44,17 @@ Flash Layout (4MB = 0x400000)
 │       OTA Data (8KB)         │ ◀── M07 OTA state
 ├──────────────────────────────┤ 0x00F000
 │                              │
-│       App OTA_0 (1.5MB)      │ ◀── Active firmware
-│                              │
-├──────────────────────────────┤ 0x18F000
-│                              │
-│       App OTA_1 (1.5MB)      │ ◀── Update partition
+│       App OTA_0 (3MB)        │ ◀── Active firmware
 │                              │
 ├──────────────────────────────┤ 0x30F000
-│     SPIFFS/Logs (64KB)       │ ◀── M09 persistent logs
-├──────────────────────────────┤ 0x31F000
+│                              │
+│       App OTA_1 (3MB)        │ ◀── Update partition
+│                              │
+├──────────────────────────────┤ 0x60F000
+│     SPIFFS/Logs (256KB)      │ ◀── M09 persistent logs
+├──────────────────────────────┤ 0x64F000
 │         Reserved             │
-└──────────────────────────────┘ 0x400000
+└──────────────────────────────┘ 0x800000
 
 ════════════════════════════════════════════════════════════
 ```
@@ -116,26 +118,34 @@ Flash Layout (4MB = 0x400000)
 ### 3.4 Total Heap Budget
 
 ```
-Heap Budget Summary
+Heap Budget Summary (RS-1 Pro)
 ════════════════════════════════════════════════════════════
 
-Total Available:                         200 KB
+Total Available:                         250 KB
 ─────────────────────────────────────────────────
 System overhead (ESP-IDF):               - 70 KB
 Application modules:                     - 26 KB
 TLS (normal operation):                  - 41 KB
 ─────────────────────────────────────────────────
-Available (normal):                        63 KB
+Available (normal):                       113 KB  ◀── COMFORTABLE
 
 During OTA (additional HTTPS TLS):       - 33 KB
 ─────────────────────────────────────────────────
-Available (during OTA):                    30 KB  ◀── CRITICAL
+Available (during OTA):                    80 KB  ◀── SAFE
 
 Safety margin target:                      20 KB
 ═════════════════════════════════════════════════
 
-STATUS: MARGINAL during OTA - requires careful management
+STATUS: HEALTHY - 50KB+ headroom in all scenarios
 ```
+
+### 3.5 Variant Comparison
+
+| Scenario | Pro | Lite | Notes |
+|----------|-----|------|-------|
+| Normal operation | 113 KB free | ~120 KB free | Lite saves ~7 KB (no M02/M03) |
+| During OTA | 80 KB free | ~87 KB free | Both variants safe |
+| Worst case | 47 KB free | ~54 KB free | MQTT + HTTPS + Native API |
 
 ---
 
@@ -274,11 +284,13 @@ Based on the memory budget, the following limits apply:
 
 | Resource | Limit | Constraint |
 |----------|-------|------------|
-| Maximum zones | 16 | 2 KB zone config allocation |
-| Maximum vertices per zone | 8 | 128 bytes per zone |
-| Maximum entities | 50 | 4 KB entity registry |
-| Maximum log buffer | 8 KB | Heap availability |
-| Simultaneous TLS connections | 2 | Heap during OTA |
+| Maximum zones | 24 | ~3 KB zone config allocation |
+| Maximum vertices per zone | 12 | 192 bytes per zone |
+| Maximum entities | 75 | 6 KB entity registry |
+| Maximum log buffer | 16 KB | Heap availability |
+| Simultaneous TLS connections | 3 | Heap during OTA |
+
+**Note:** Limits increased from ESP32-C3 baseline due to 120 KB additional SRAM.
 
 ---
 
@@ -335,3 +347,4 @@ Before implementation, verify:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1 | 2026-01-09 | OpticWorks | Initial specification, addresses RFD-001 issue C4 |
+| 0.2 | 2026-01-15 | OpticWorks | Updated for ESP32-WROOM-32E (520KB SRAM, 8MB flash), added variant comparison |

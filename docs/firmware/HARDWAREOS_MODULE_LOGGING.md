@@ -336,7 +336,7 @@ typedef struct {
 | Metric | Requirement | Rationale |
 |--------|-------------|-----------|
 | Log write latency | < 100µs | Non-blocking in hot path |
-| Buffer memory | 8KB | Reasonable for ESP32-C3 |
+| Buffer memory | 16KB | Reasonable for ESP32-WROOM-32E (increased from 8KB) |
 | Telemetry upload | < 1KB/min | Minimal bandwidth |
 
 ## 13. Testing Strategy
