@@ -15,14 +15,16 @@ HardwareOS is the custom firmware stack for RS-1 that transforms radar data into
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              HardwareOS                                      │
 │                                                                              │
-│    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐  │
-│    │ LD2450  │───▶│ Tracking│───▶│  Zone   │───▶│Smoothing│───▶│   HA    │  │
-│    │ Radar   │    │ Engine  │    │ Engine  │    │ Filter  │    │ Native  │  │
-│    │         │    │         │    │         │    │         │    │   API   │  │
-│    └─────────┘    └─────────┘    └─────────┘    └─────────┘    └─────────┘  │
-│         │                             │                             │        │
-│         │              ┌──────────────┴──────────────┐              │        │
-│         ▼              ▼                             ▼              ▼        │
+│    ┌─────────┐                                                               │
+│    │ LD2410  │──┐                                                            │
+│    │(presence)│  │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌───────┐ │
+│    └─────────┘  ├──▶│ Radar   │───▶│ Tracking│───▶│Smoothing│───▶│  HA   │ │
+│    ┌─────────┐  │   │ Ingest  │    │ + Zone  │    │ Filter  │    │Native │ │
+│    │ LD2450  │──┘   │  (M01)  │    │(M02/M03)│    │  (M04)  │    │ (M05) │ │
+│    │(tracking)│     └─────────┘    └─────────┘    └─────────┘    └───────┘ │
+│    └─────────┘           │                             │              │      │
+│     (Pro only)           │              ┌──────────────┴──────────────┘      │
+│                          ▼              ▼                                    │
 │    ┌─────────────────────────────────────────────────────────────────────┐  │
 │    │                      System Services Layer                          │  │
 │    │   Config Store  │  Timebase  │  Logging  │  Security  │  OTA       │  │
@@ -31,9 +33,10 @@ HardwareOS is the custom firmware stack for RS-1 that transforms radar data into
 │                                      ▼                                       │
 │    ┌─────────────────────────────────────────────────────────────────────┐  │
 │    │                         ESP-IDF / Hardware                          │  │
-│    │         UART  │  NVS  │  Wi-Fi  │  TLS  │  Timers  │  Watchdog     │  │
+│    │       UART×2  │  NVS  │  Wi-Fi  │  TLS  │  Timers  │  Watchdog     │  │
 │    └─────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
+    Lite: LD2410 only (M01→M04→M05)  |  Pro: LD2410+LD2450 dual-radar fusion
 ```
 
 ---
@@ -77,10 +80,27 @@ RS-1 Lite: M01 (LD2410) ──▶ M04 (Smoothing) ──▶ M05 (Native API)
 
 ### 3.3 Pro Processing Pipeline
 
+RS-1 Pro uses **dual-radar fusion** with both LD2410 and LD2450 in time-division multiplexed mode:
+
 ```
-RS-1 Pro: M01 (LD2450) ──▶ M02 (Tracking) ──▶ M03 (Zone Engine) ──▶ M04 ──▶ M05
-                                │
-                                └── Full tracking with coordinates and zones
+             ┌──────────────┐
+             │    LD2410    │  (presence confidence, ~5 Hz)
+             │   (UART 1)   │
+             └──────┬───────┘
+                    │
+                    ▼
+RS-1 Pro: M01 (Dual Radar) ──▶ M02 (Tracking) ──▶ M03 (Zone Engine) ──▶ M04 ──▶ M05
+                    ▲                  │
+                    │                  └── Coordinates + presence confidence
+             ┌──────┴───────┐
+             │    LD2450    │  (target tracking, 33 Hz)
+             │   (UART 2)   │
+             └──────────────┘
+
+Data Fusion Strategy:
+• LD2450 provides X/Y coordinates and velocity for up to 3 targets
+• LD2410 provides binary presence confidence as additional input to smoothing
+• M01 multiplexes both UART streams into unified detection output
 ```
 
 ### 3.4 SMP Architecture (Dual-Core)
@@ -109,30 +129,35 @@ This prevents TLS handshakes (~500ms) from blocking radar frame processing (33 H
 
 ### 5.1 Data Flow Pipeline (RS-1 Pro)
 
-The core processing pipeline runs at radar frame rate (~33 Hz) with throttled output to Home Assistant (~10 Hz). **Note:** This pipeline is for RS-1 Pro only. RS-1 Lite uses a simplified M01→M04→M05 path (see Section 3).
+The core processing pipeline uses **dual-radar fusion** with time-division multiplexing. LD2450 runs at 33 Hz for tracking, LD2410 at ~5 Hz for presence confidence. **Note:** RS-1 Lite uses a simplified M01→M04→M05 path with LD2410 only (see Section 3).
 
 ```
-                                    CORE DATA PATH
+                                    CORE DATA PATH (RS-1 Pro)
     ════════════════════════════════════════════════════════════════════════
 
-    ┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-    │   LD2450     │  UART   │     M01      │ detect  │     M02      │
-    │   Sensor     │────────▶│ Radar Ingest │────────▶│   Tracking   │
-    │              │ 33 Hz   │              │  frame  │              │
-    └──────────────┘         └──────────────┘         └──────────────┘
-                                    │                        │
-                    ┌───────────────┘                        │
-                    │  timestamp                             │ tracks
-                    ▼                                        ▼
-             ┌──────────────┐                        ┌──────────────┐
-             │     M08      │                        │     M03      │
-             │   Timebase   │                        │  Zone Engine │
-             │              │                        │              │
-             └──────────────┘                        └──────────────┘
-                                                            │
-                    ┌───────────────────────────────────────┘
-                    │  zone occupancy (raw)
-                    ▼
+    ┌──────────────┐                 ┌──────────────┐         ┌──────────────┐
+    │   LD2410     │  UART 1         │              │ detect  │     M02      │
+    │   Sensor     │──(~5 Hz)───────▶│     M01      │────────▶│   Tracking   │
+    │  (presence)  │                 │ Radar Ingest │  frame  │              │
+    └──────────────┘                 │              │         └──────────────┘
+                                     │  (Dual-Radar │                │
+    ┌──────────────┐                 │   TDM Mux)   │                │
+    │   LD2450     │  UART 2         │              │                │ tracks
+    │   Sensor     │──(33 Hz)───────▶│              │                ▼
+    │  (tracking)  │                 └──────────────┘         ┌──────────────┐
+    └──────────────┘                        │                 │     M03      │
+                                            │                 │  Zone Engine │
+                    ┌───────────────────────┘                 │              │
+                    │  timestamp                              └──────────────┘
+                    ▼                                                │
+             ┌──────────────┐                                        │
+             │     M08      │                                        │
+             │   Timebase   │                                        │
+             │              │                                        │
+             └──────────────┘                                        │
+                                     ┌───────────────────────────────┘
+                                     │  zone occupancy (raw)
+                                     ▼
              ┌──────────────┐         ┌──────────────┐         ┌──────────┐
              │     M04      │ smooth  │     M05      │ protobuf│   Home   │
              │  Presence    │────────▶│  Native API  │────────▶│Assistant │
@@ -140,6 +165,11 @@ The core processing pipeline runs at radar frame rate (~33 Hz) with throttled ou
              └──────────────┘         └──────────────┘         └──────────┘
 
     ════════════════════════════════════════════════════════════════════════
+
+    Dual-Radar Fusion:
+    • LD2450 (UART 2, 33 Hz): Primary tracking - provides X/Y/velocity for 3 targets
+    • LD2410 (UART 1, ~5 Hz): Presence confidence - binary presence as smoothing input
+    • M01 multiplexes both streams, outputs unified detection_frame_t to M02
 ```
 
 ### 5.2 Module Layers
@@ -295,14 +325,17 @@ These modules provide infrastructure for all other modules:
 
 ### M01 Radar Ingest
 
-**Input**: LD2450 UART frames (40 bytes @ 33 Hz)
-**Output**: `detection_frame_t` with up to 3 targets
+**Lite Input**: LD2410 UART frames (~5 Hz, binary presence)
+**Pro Input**: LD2410 + LD2450 UART frames (time-division multiplexed)
+**Output**: `detection_frame_t` with up to 3 targets (Pro) or binary presence (Lite)
 
-- Parse binary UART frames per LD2450 protocol
+- Parse binary UART frames per radar protocol (LD2410 and/or LD2450)
+- For Pro: multiplex both UART streams with time-division handling
 - Validate frame checksums and reject malformed data
-- Normalize coordinates to consistent reference frame
+- Normalize coordinates to consistent reference frame (Pro only)
 - Apply basic filtering (range gate, speed sanity)
 - Timestamp frames for downstream synchronization
+- For Pro: fuse LD2410 presence confidence with LD2450 tracking data
 
 ### M02 Tracking
 
@@ -464,8 +497,8 @@ These modules provide infrastructure for all other modules:
 |-----------|---------------|
 | **MCU** | ESP32-WROOM-32E (Xtensa LX6 dual-core, 240MHz, 520KB SRAM, 8MB Flash) |
 | **Radar (Lite)** | HiLink LD2410 (24GHz FMCW, binary presence) |
-| **Radar (Pro)** | HiLink LD2450 (24GHz FMCW, 3 targets, 6m range) |
-| **Interface** | UART @ 256000 baud (LD2450), TBD (LD2410) |
+| **Radar (Pro)** | HiLink LD2410 + LD2450 (dual-radar fusion, time-division multiplexed) |
+| **Interface** | UART×2: LD2450 @ 256000 baud, LD2410 @ 115200 baud |
 | **USB** | CH340N USB-UART bridge |
 | **Power** | USB-C, 5V |
 | **Ethernet** | Optional RMII PHY (SR8201F) for PoE variant |
@@ -523,8 +556,9 @@ These assumptions underpin the module specifications. If any change, review the 
 | A7 | MQTT for cloud (OTA, telemetry) | M07, M09 |
 | A8 | Typical occlusions < 2 seconds | M04 (Pro only) |
 | A9 | User prefers false occupancy over false vacancy | M04 |
-| A10 | Product variant: Lite (LD2410) or Pro (LD2450) | M01, M02, M03, M04 |
-| A11 | LD2410 protocol details TBD | M01 (Lite) |
+| A10 | Product variant: Lite (LD2410) or Pro (LD2410+LD2450 dual-radar) | M01, M02, M03, M04 |
+| A11 | LD2410 frame rate ~5 Hz, UART 115200 baud | M01 (Both variants) |
+| A12 | Pro uses time-division multiplexed dual-radar fusion | M01 (Pro only) |
 
 ---
 

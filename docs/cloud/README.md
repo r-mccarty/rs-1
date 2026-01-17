@@ -71,7 +71,7 @@ This document describes the cloud services architecture for RS-1 devices. The cl
                                     ▼
                     ┌───────────────────────────────┐
                     │         RS-1 Devices          │
-                    │  ESP32-C3 + LD2450 Radar      │
+                    │  ESP32-WROOM-32E + Radar      │
                     └───────────────────────────────┘
 ```
 

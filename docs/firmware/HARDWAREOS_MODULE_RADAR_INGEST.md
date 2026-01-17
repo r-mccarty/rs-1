@@ -1,13 +1,16 @@
 # HardwareOS Radar Ingest Module Specification (M01)
 
-Version: 0.1
-Date: 2026-01-XX
+Version: 0.2
+Date: 2026-01-17
 Owner: OpticWorks Firmware
 Status: Draft
 
 ## 1. Purpose
 
-Parse raw LD2450 UART frames into normalized detection data and deliver timestamped detections to the Tracking module (M02). This module is the sole interface between hardware and the processing pipeline.
+Parse raw radar UART frames into normalized detection data and deliver timestamped detections to downstream modules. This module is the sole interface between radar hardware and the processing pipeline.
+
+- **RS-1 Lite**: Parse LD2410 frames → binary presence output to M04
+- **RS-1 Pro**: Parse LD2410 + LD2450 frames (time-division multiplexed) → fused detection output to M02
 
 ## 2. Assumptions
 
@@ -16,35 +19,58 @@ Parse raw LD2450 UART frames into normalized detection data and deliver timestam
 | ID | Assumption | Impact if Changed |
 |----|------------|-------------------|
 | A1 | LD2450 outputs at ~33 Hz (30ms frame interval) | Frame timing, buffer sizing, downstream rate assumptions (Pro only) |
-| A2 | UART baud rate is 256000 (LD2450); TBD (LD2410) | Serial configuration, parse timing |
+| A2 | LD2450 UART baud rate is 256000 | Serial configuration (Pro, UART 2) |
 | A3 | Maximum 3 targets per frame (LD2450) | Buffer allocation, data structures (Pro only) |
 | A4 | Coordinate range: X ±6000mm, Y 0–6000mm | Normalization bounds, zone engine constraints (Pro only) |
 | A5 | Speed range: -128 to +127 cm/s | Velocity filtering thresholds (Pro only) |
-| A6 | ESP32-WROOM-32E is the target MCU | Memory constraints, UART peripheral config |
-| A7 | Product variant: Lite (LD2410) or Pro (LD2450) | Different protocol parsers per variant |
-| A8 | LD2410 protocol details TBD | Lite variant implementation |
+| A6 | ESP32-WROOM-32E is the target MCU | Memory constraints, dual UART peripheral config |
+| A7 | Product variant: Lite (LD2410) or Pro (LD2410+LD2450) | Different parsers, dual-radar for Pro |
+| A8 | LD2410 UART baud rate is 115200 | Serial configuration (Lite UART 1, Pro UART 1) |
+| A9 | LD2410 outputs at ~5 Hz (200ms frame interval) | Frame timing for presence updates |
+| A10 | Pro uses time-division multiplexed dual-radar | M01 handles two UART streams concurrently |
 
 ## 3. Inputs
 
 ### 3.1 Hardware Interface
 
-- **UART RX**: Radar TX pin connected to ESP32-WROOM-32E UART RX.
-- **Baud Rate**: 256000 (LD2450); TBD (LD2410).
-- **Frame Format**: Binary frames per radar protocol specification.
-- **Core Affinity**: Pinned to Core 1 for time-critical processing (see SMP Architecture in README.md).
+#### RS-1 Lite (Single Radar)
+- **UART 1 RX**: LD2410 TX → ESP32-WROOM-32E GPIO (UART1 RX)
+- **Baud Rate**: 115200
+- **Frame Format**: LD2410 Engineering Mode frames (see Section 3.3)
+- **Core Affinity**: Pinned to Core 1 for time-critical processing
+
+#### RS-1 Pro (Dual Radar, Time-Division Multiplexed)
+- **UART 1 RX**: LD2410 TX → ESP32-WROOM-32E GPIO (UART1 RX) @ 115200 baud
+- **UART 2 RX**: LD2450 TX → ESP32-WROOM-32E GPIO (UART2 RX) @ 256000 baud
+- **Frame Format**: Both protocols parsed concurrently
+- **Core Affinity**: Pinned to Core 1 for time-critical processing
 
 ### 3.1.1 Variant Differences
 
-| Aspect | RS-1 Lite (LD2410) | RS-1 Pro (LD2450) |
-|--------|-------------------|-------------------|
-| **Radar** | LD2410 (binary presence) | LD2450 (3 targets, coordinates) |
-| **Frame Rate** | ~5 Hz (TBD) | 33 Hz |
-| **Output** | Binary presence | Up to 3 targets with (x, y, speed) |
+| Aspect | RS-1 Lite | RS-1 Pro |
+|--------|-----------|----------|
+| **Radar(s)** | LD2410 only | LD2410 + LD2450 (dual-radar) |
+| **UART Ports** | 1 (UART1) | 2 (UART1 + UART2) |
+| **Frame Rates** | ~5 Hz (LD2410) | ~5 Hz (LD2410) + 33 Hz (LD2450) |
+| **Output** | Binary presence + energy levels | Fused: coordinates + presence confidence |
 | **Downstream** | M01 → M04 → M05 | M01 → M02 → M03 → M04 → M05 |
 
-**Note:** LD2410 protocol details TBD. For now, this spec focuses on LD2450 (Pro variant).
+### 3.1.2 Dual-Radar Fusion Strategy (Pro Only)
 
-### 3.2 Frame Structure (LD2450 Protocol)
+In RS-1 Pro, both radars contribute complementary data:
+
+| Radar | Contribution | Use |
+|-------|--------------|-----|
+| **LD2450** | X/Y coordinates, velocity for up to 3 targets | Primary tracking input to M02 |
+| **LD2410** | Binary presence, moving/stationary energy levels | Confidence boost for M04 smoothing |
+
+**Fusion Logic:**
+- LD2450 provides primary detection frames at 33 Hz → M02 Tracking
+- LD2410 presence state used as confidence input to M04 Smoothing
+- If LD2450 reports 0 targets but LD2410 reports presence → extend hold time
+- If both agree on no presence → faster transition to vacant state
+
+### 3.2 Frame Structure (LD2450 Protocol - Pro Only)
 
 | Byte Offset | Field | Size | Description |
 |-------------|-------|------|-------------|
@@ -60,9 +86,58 @@ Parse raw LD2450 UART frames into normalized detection data and deliver timestam
 
 Total frame size: 40 bytes.
 
+### 3.3 Frame Structure (LD2410 Protocol - Lite and Pro)
+
+The LD2410 operates in Engineering Mode to provide energy level data beyond simple binary presence.
+
+#### 3.3.1 LD2410 Engineering Mode Frame
+
+| Byte Offset | Field | Size | Description |
+|-------------|-------|------|-------------|
+| 0–3 | Header | 4 | Frame start marker `0xF4 0xF3 0xF2 0xF1` |
+| 4–5 | Data Length | 2 | Payload length (little-endian) |
+| 6 | Data Type | 1 | `0x01` = Engineering mode data |
+| 7 | Head | 1 | `0xAA` frame head |
+| 8 | Target State | 1 | `0x00`=No target, `0x01`=Moving, `0x02`=Stationary, `0x03`=Both |
+| 9 | Moving Target Distance | 2 | Distance in cm (little-endian) |
+| 11 | Moving Target Energy | 1 | 0-100 signal strength |
+| 12 | Stationary Target Distance | 2 | Distance in cm (little-endian) |
+| 14 | Stationary Target Energy | 1 | 0-100 signal strength |
+| 15 | Detection Distance | 2 | Max detection distance in cm |
+| 17–24 | Moving Energy Gates | 8 | Energy per gate (0-8) for moving targets |
+| 25–32 | Stationary Energy Gates | 8 | Energy per gate (0-8) for stationary targets |
+| 33 | Tail | 1 | `0x55` frame tail |
+| 34 | Check | 1 | `0x00` |
+| 35–38 | Footer | 4 | Frame end marker `0xF8 0xF7 0xF6 0xF5` |
+
+Total frame size: 39 bytes (Engineering Mode).
+
+#### 3.3.2 LD2410 Target States
+
+| Value | State | Description |
+|-------|-------|-------------|
+| `0x00` | NO_TARGET | No presence detected |
+| `0x01` | MOVING | Moving target only |
+| `0x02` | STATIONARY | Stationary target only |
+| `0x03` | MOVING_AND_STATIONARY | Both moving and stationary targets |
+
+#### 3.3.3 LD2410 Configuration
+
+Before use, LD2410 must be configured to Engineering Mode:
+
+```
+Command: Enable Engineering Mode
+TX: FD FC FB FA 04 00 62 00 00 00 04 03 02 01
+RX: FD FC FB FA 04 00 62 01 00 00 04 03 02 01
+```
+
+This is performed during M01 initialization.
+
 ## 4. Outputs
 
-### 4.1 Detection Structure
+### 4.1 Detection Structures
+
+#### 4.1.1 LD2450 Detection (Pro - Target Tracking)
 
 ```c
 typedef struct {
@@ -81,6 +156,38 @@ typedef struct {
     uint32_t frame_seq;     // Monotonic frame sequence number
 } detection_frame_t;
 ```
+
+#### 4.1.2 LD2410 Presence (Lite and Pro)
+
+```c
+typedef enum {
+    LD2410_NO_TARGET = 0x00,
+    LD2410_MOVING = 0x01,
+    LD2410_STATIONARY = 0x02,
+    LD2410_MOVING_AND_STATIONARY = 0x03
+} ld2410_target_state_t;
+
+typedef struct {
+    ld2410_target_state_t state;    // Target state enum
+    uint16_t moving_distance_cm;    // Moving target distance
+    uint8_t moving_energy;          // Moving target energy (0-100)
+    uint16_t stationary_distance_cm;// Stationary target distance
+    uint8_t stationary_energy;      // Stationary target energy (0-100)
+    uint8_t moving_gates[9];        // Per-gate energy (gates 0-8)
+    uint8_t stationary_gates[9];    // Per-gate energy (gates 0-8)
+    uint32_t timestamp_ms;          // Frame timestamp
+    uint32_t frame_seq;             // Monotonic frame sequence
+} presence_frame_t;
+```
+
+#### 4.1.3 Fused Output (Pro Only)
+
+For RS-1 Pro, M01 outputs both structures:
+- `detection_frame_t` from LD2450 → M02 Tracking (33 Hz)
+- `presence_frame_t` from LD2410 → M04 Smoothing as confidence input (~5 Hz)
+
+For RS-1 Lite, M01 outputs only:
+- `presence_frame_t` from LD2410 → M04 Smoothing (~5 Hz)
 
 ### 4.2 Coordinate Normalization
 
@@ -197,14 +304,24 @@ bool radar_is_connected(void) {
 
 ## 7. Configuration Parameters
 
+### 7.1 UART Configuration
+
+| Parameter | Type | Default (Lite) | Default (Pro) | Description |
+|-----------|------|----------------|---------------|-------------|
+| `uart1_baud` | uint32 | 115200 | 115200 | LD2410 UART baud rate |
+| `uart1_rx_pin` | uint8 | GPIO_XX | GPIO_XX | LD2410 RX pin |
+| `uart2_baud` | uint32 | N/A | 256000 | LD2450 UART baud rate (Pro only) |
+| `uart2_rx_pin` | uint8 | N/A | GPIO_YY | LD2450 RX pin (Pro only) |
+
+### 7.2 Filtering Parameters
+
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `uart_baud` | uint32 | 256000 | UART baud rate |
-| `uart_rx_pin` | uint8 | GPIO_XX | RX pin assignment |
-| `min_range_mm` | uint16 | 100 | Minimum valid Y distance |
-| `max_range_mm` | uint16 | 6000 | Maximum valid Y distance |
-| `max_speed_cm_s` | uint16 | 500 | Maximum valid speed |
+| `min_range_mm` | uint16 | 100 | Minimum valid Y distance (LD2450) |
+| `max_range_mm` | uint16 | 6000 | Maximum valid Y distance (LD2450) |
+| `max_speed_cm_s` | uint16 | 500 | Maximum valid speed (LD2450) |
 | `output_meters` | bool | false | Output in meters vs mm |
+| `ld2410_min_energy` | uint8 | 10 | Minimum energy threshold for presence |
 
 ## 8. Performance Requirements
 
@@ -253,3 +370,6 @@ bool radar_is_connected(void) {
 - Confirm LD2450 checksum algorithm (sum vs CRC).
 - Determine if resolution field is useful for tracking confidence.
 - Validate actual frame rate under various target conditions.
+- Optimal fusion strategy: How much weight should LD2410 presence have vs LD2450 tracking?
+- LD2410 gate energy thresholds: What energy levels indicate reliable presence?
+- Dual-radar timing: Does LD2410 polling interfere with LD2450 frame timing on Pro?

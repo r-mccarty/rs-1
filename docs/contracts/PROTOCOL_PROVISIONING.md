@@ -723,7 +723,7 @@ The provisioning AP is intentionally open (no password) for ease of setup. Mitig
 
 ## 12. Implementation Notes
 
-### 12.1 Memory Budget (ESP32-C3)
+### 12.1 Memory Budget (ESP32-WROOM-32E)
 
 | Component | RAM Usage |
 |-----------|-----------|

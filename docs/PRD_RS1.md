@@ -196,7 +196,7 @@ When user DOES need to adjust:
 | Question | Impact | How to Resolve |
 |----------|--------|----------------|
 | Actual LD2450 frame rate and jitter | Tracking accuracy | Hardware testing |
-| ESP32-C3 memory under real load | Stability | Profiling during integration |
+| ESP32-WROOM-32E memory under real load | Stability | Profiling during integration |
 | TLS memory during OTA | OTA reliability | Load testing |
 | NVS wear rate in practice | Device lifetime | Long-term testing |
 | Real-world occlusion patterns | Hold time defaults | Field data collection |

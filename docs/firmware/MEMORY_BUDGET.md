@@ -290,7 +290,7 @@ Based on the memory budget, the following limits apply:
 | Maximum log buffer | 16 KB | Heap availability |
 | Simultaneous TLS connections | 3 | Heap during OTA |
 
-**Note:** Limits increased from ESP32-C3 baseline due to 120 KB additional SRAM.
+**Note:** ESP32-WROOM-32E provides ~250 KB heap, more than sufficient for dual-radar fusion.
 
 ---
 

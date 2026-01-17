@@ -48,9 +48,14 @@
       "maximum": 16,
       "description": "Number of configured zones"
     },
+    "product_sku": {
+      "type": "string",
+      "enum": ["rs1_lite", "rs1_pro"],
+      "description": "Product variant for OTA targeting and telemetry segmentation"
+    },
     "radar_connected": {
       "type": "boolean",
-      "description": "LD2450 radar sensor connection status"
+      "description": "Primary radar sensor connection status (LD2410 for Lite, LD2450 for Pro)"
     },
     "boot_count": {
       "type": "integer",
@@ -69,6 +74,7 @@
       "online": true,
       "firmware_version": "1.2.0",
       "protocol_version": "1.0",
+      "product_sku": "rs1_pro",
       "uptime_sec": 86400,
       "wifi_rssi": -55,
       "last_seen": "2026-01-15T10:00:00Z",
@@ -77,6 +83,14 @@
       "radar_connected": true,
       "boot_count": 42,
       "reset_reason": "power_on"
+    },
+    {
+      "online": true,
+      "firmware_version": "1.2.0",
+      "product_sku": "rs1_lite",
+      "last_seen": "2026-01-15T10:00:00Z",
+      "zone_count": 0,
+      "radar_connected": true
     },
     {
       "online": false,
