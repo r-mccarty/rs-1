@@ -1,7 +1,7 @@
 # RS-1 Requirements Specification
 
-**Version:** 0.2
-**Date:** 2026-01-09
+**Version:** 0.3
+**Date:** 2026-01-18
 **Owner:** OpticWorks Product + Engineering
 **Status:** Draft
 
@@ -12,6 +12,8 @@
 ## 1. Product Summary
 
 RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy using a single LD2450 tracking radar. It features mobile onboarding, native Home Assistant discovery via ESPHome-compatible Native API, and cloud-push OTA updates. The product prioritizes UX and software capability (unlimited zones, AR-assisted setup) over multi-sensor hardware complexity.
+
+**Platform Foundation:** RS-1's architecture is designed for capability extension via OTA. The same infrastructure that delivers firmware updates can deliver new capabilities—activity classification, semantic understanding, direct device control—without requiring hardware changes. Today, RS-1 integrates with Home Assistant. Tomorrow, it can operate standalone or control devices directly via Matter/webhooks.
 
 **Target Price:** $70-80 base device
 **Optional Subscription:** $3-5/month (remote access, AR scanning, analytics)
@@ -124,6 +126,25 @@ RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy 
 | Transport | TLS 1.2+ for MQTT and HTTPS |
 | API auth | Noise protocol PSK or legacy password |
 | Anti-rollback | eFuse-based version counter (32 versions max) |
+
+### 4.7 Platform Enablers (Post-MVP)
+
+These requirements establish architectural hooks for future platform capabilities. They are NOT MVP requirements but inform MVP architecture decisions.
+
+| Capability | Version | Description | MVP Architectural Hook |
+|------------|---------|-------------|------------------------|
+| Activity Classification | v1.5 | Detect sitting, walking, sleeping patterns | Track velocity/movement patterns in M02 |
+| Local Action Dispatch | v1.5 | Trigger webhooks/HTTP without HA | Reserved config schema fields |
+| Matter Bridge | v2.0 | Direct device control via Matter | Protocol abstraction in M05 |
+| Standalone Mode | v2.0 | Full operation without HA | Local automation rule engine placeholder |
+
+**Technical Enablers:**
+
+| Metric | Target | Rationale |
+|--------|--------|-----------|
+| Edge Processing Latency | <100ms detection to action | 5-10x faster than cloud roundtrip |
+| ML Inference Budget | ~50KB heap, ~500ms classification | Fits within ESP32 constraints |
+| Protocol Abstraction | Unified presence model | Serves ESPHome, Matter, webhooks from same data |
 
 ---
 
@@ -287,6 +308,7 @@ See `docs/contracts/PROTOCOL_PROVISIONING.md` for detailed provisioning protocol
 3. **Consumer-grade setup** - App-first, guided steps, no YAML editing
 4. **Sensible defaults** - Works out of box, advanced settings optional
 5. **Local-first** - Full functionality without cloud account
+6. **Progressive disclosure** - Basic users see simple presence on/off; power users can unlock semantic intelligence (activity types, patterns) via app settings
 
 ---
 
@@ -314,12 +336,22 @@ See `docs/contracts/PROTOCOL_PROVISIONING.md` for detailed provisioning protocol
 
 ## 10. Milestones
 
+### 10.1 MVP Milestones
+
 | Milestone | Target | Deliverables |
 |-----------|--------|--------------|
 | M0 | Dec 2025 | Architecture validation, Native API compatibility |
 | M1 | Jan 2026 | Mobile onboarding MVP, zone editor |
 | M2 | Feb 2026 | OTA infrastructure, staged rollout |
 | M3 | Mar 2026 | Beta launch |
+
+### 10.2 Platform Milestones (Post-MVP)
+
+| Milestone | Target | Deliverables |
+|-----------|--------|--------------|
+| M4 | Q2 2026 | Edge intelligence SDK, activity classification beta |
+| M5 | Q3 2026 | Direct control (HA API bypass), Matter research |
+| M6 | Q4 2026 | Standalone mode, Matter MVP |
 
 ---
 
@@ -329,3 +361,4 @@ See `docs/contracts/PROTOCOL_PROVISIONING.md` for detailed provisioning protocol
 |---------|------|--------|---------|
 | 0.1 | 2026-01-XX | OpticWorks | Initial draft (split docs) |
 | 0.2 | 2026-01-09 | OpticWorks | Consolidated PRODUCT_SPEC + TECH_REQUIREMENTS |
+| 0.3 | 2026-01-18 | OpticWorks | Added platform foundation; platform enablers (post-MVP); progressive disclosure UX principle; post-MVP milestones M4-M6 |

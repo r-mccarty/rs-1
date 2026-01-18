@@ -1,7 +1,7 @@
 # RS-1 Product Requirements Document
 
-**Version:** 0.2
-**Date:** 2026-01-09
+**Version:** 0.4
+**Date:** 2026-01-18
 **Owner:** OpticWorks Product
 **Status:** Draft
 
@@ -31,11 +31,31 @@ RS-1 fills this gap: professional reliability, consumer UX, prosumer control.
 
 **Product thesis:** Users want presence detection to "just work" like a light switch. They don't want to understand radar physics, tune sensitivity thresholds, or debug false triggers. RS-1 abstracts the complexity into a single confidence-weighted presence answer per zone, configured through an intuitive mobile app.
 
+### Strategic Vision: The Tesla Strategy
+
+RS-1 is the presence sensor that doesn't require a PhD to set up. Under the hood, it's the first autonomous spatial computer for the smart home—but you'll never need to know that to enjoy it working perfectly.
+
+**Phase Roadmap:**
+
+| Phase | Version | Focus | Value Proposition |
+|-------|---------|-------|-------------------|
+| **UX Excellence** | v1.0 | Setup simplicity, reliable detection | "It just works" |
+| **Edge Intelligence** | v1.5 | Activity classification, local ML | "It understands what's happening" |
+| **Semantic Understanding** | v2.0 | Room context, behavioral patterns | "It knows what you need" |
+
+**Platform Thesis:** While cloud-dependent devices add latency and privacy concerns, RS-1 processes everything at the edge. Today, RS-1 integrates seamlessly with Home Assistant. Tomorrow, it can control devices directly without any hub. The same OTA infrastructure that delivers firmware updates can deliver new capabilities—activity classification, semantic understanding, direct device control—without requiring hardware changes.
+
 **Differentiation:**
 - Unlimited software zones (vs. Aqara's 30-zone hardware limit)
 - ESPHome-native (vs. proprietary protocols)
 - Cloud-optional OTA (vs. manual firmware updates)
 - Mobile-first setup (vs. YAML configuration)
+
+**Platform Differentiators (Post-MVP):**
+- Edge Intelligence: <100ms detection-to-action latency (vs. cloud 500ms-2s)
+- Semantic Understanding: Activity patterns, not just binary presence
+- Direct Control: Local HA API, future Matter/Webhooks support
+- OTA-Delivered Capabilities: New features without hardware changes
 
 ---
 
@@ -81,6 +101,20 @@ RS-1 fills this gap: professional reliability, consumer UX, prosumer control.
 - Dependent on mobile app maturity and retail availability
 
 **Not MVP target** - requires significant app polish and support infrastructure.
+
+### 3.4 User Archetype Evolution: Architect to Sovereign
+
+The platform strategy enables serving increasingly demanding user archetypes over time:
+
+| Archetype | Version | Characteristics | What They Tolerate | What They Demand |
+|-----------|---------|-----------------|--------------------|--------------------|
+| **Architects** | v1.0 | HA early adopters, technical | Rough edges, YAML backup | Capability, local control |
+| **Sovereigns** | v2.0+ | Mass market, non-technical | Nothing | Standalone operation, zero config |
+
+**Phase Requirements:**
+
+- **v1.0 (Architects):** Home Assistant integration is mandatory. Users will configure complex automations themselves. UX polish matters but capability wins.
+- **v2.0+ (Sovereigns):** Standalone operation without HA. Device must work out-of-box with direct Matter/webhook control. Zero user configuration beyond Wi-Fi.
 
 ---
 
@@ -151,6 +185,8 @@ When user DOES need to adjust:
 
 ## 5. Success Metrics
 
+### 5.1 UX Excellence Metrics (MVP)
+
 | Metric | Target | Measurement Method |
 |--------|--------|-------------------|
 | Setup completion time | ≤60 sec for 80% of users | App instrumentation (time from QR scan to "Done") |
@@ -161,6 +197,15 @@ When user DOES need to adjust:
 | Manual update rate | <1% of users | Support ticket tracking |
 | NPS | >50 | Post-setup survey |
 | Return rate | <3% | Sales/returns tracking |
+
+### 5.2 Platform Intelligence Metrics (Post-MVP)
+
+| Metric | Target | Measurement Method |
+|--------|--------|-------------------|
+| Edge Decision Rate | >95% automations triggered locally | Telemetry (local vs cloud actions) |
+| Time-to-Action | <100ms detection to entity update | Instrumented latency measurement |
+| Semantic Accuracy | >80% activity classification | Labeled test scenarios |
+| Autonomy Score | >99% operation without cloud | Uptime during cloud outages |
 
 ---
 
@@ -174,6 +219,15 @@ When user DOES need to adjust:
 | Cloud outage during setup | Low | High | Local-only setup mode; cloud features additive |
 | OTA bricks devices | Low | Critical | Staged rollout; auto-rollback; serial recovery |
 | App store rejection | Low | High | Follow platform guidelines; no private APIs |
+
+**Platform Risks (Post-MVP):**
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Matter protocol complexity delays direct control | Medium | Medium | Matter is additive; HA integration remains primary |
+| User confusion: "sensor" vs "spatial computer" | Medium | Low | Lead with UX, reveal platform only to power users |
+| Protocol fragmentation (Matter, Thread, Zigbee) | High | Medium | Protocol abstraction layer; ESPHome as primary |
+| Over-promising autonomy before delivery | Medium | High | Clear version roadmap; beta labels on new features |
 
 ---
 
@@ -249,6 +303,15 @@ To measure success metrics, the app must track:
 | No positioning guidance | Suboptimal detection | Include in app onboarding |
 | No multi-device setup flow | Scaling users | Design before v1.1 |
 
+### 7.7 Platform Evolution Questions
+
+| Question | Impact | How to Resolve |
+|----------|--------|----------------|
+| Matter certification timeline and cost? | v2.0 direct control feature | Research Matter certification requirements |
+| Minimum viable semantic MVP scope? | v1.5 edge intelligence feature | Define initial activity types (sitting, walking, sleeping) |
+| How to message "sensor" vs "platform" without confusing users? | Marketing, packaging | User testing with different positioning |
+| Standalone mode requirements without HA? | v2.0 Sovereign archetype | Define minimum viable standalone automation rules |
+
 ---
 
 ## 8. What This PRD Does NOT Cover
@@ -270,3 +333,4 @@ Explicitly out of scope for this document (covered elsewhere):
 |---------|------|--------|---------|
 | 0.1 | 2026-01-XX | OpticWorks | Initial draft |
 | 0.2 | 2026-01-09 | OpticWorks | Refocused on vision/users/metrics; added open questions section; moved requirements to REQUIREMENTS_RS1.md |
+| 0.4 | 2026-01-18 | OpticWorks | Added Tesla Strategy platform vision; platform differentiators; Architect-to-Sovereign user evolution; platform intelligence metrics; platform risks and evolution questions |

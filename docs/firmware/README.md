@@ -1,7 +1,7 @@
 # HardwareOS Specification (RS-1)
 
-Version: 0.3
-Date: 2026-01-15
+Version: 0.4
+Date: 2026-01-18
 Owner: OpticWorks Firmware
 Status: Draft
 
@@ -10,6 +10,13 @@ Status: Draft
 ## 1. Overview
 
 HardwareOS is the custom firmware stack for RS-1 that transforms radar data into stable, zone-based presence events for Home Assistant. It supports two product variants (RS-1 Lite and RS-1 Pro) with different radar configurations and processing pipelines. The firmware provides a complete pipeline from hardware interface to cloud connectivity, with a focus on reliability, testability, and seamless smart home integration.
+
+**Platform Foundation:** HardwareOS is architected for capability extension via OTA:
+
+- **Capability Extension**: The same OTA infrastructure that delivers firmware updates can deliver new capabilities without hardware changes
+- **Edge-First Processing**: <100ms detection-to-action latency by processing everything locally (vs. 500ms-2s for cloud roundtrip)
+- **Protocol Abstraction**: A unified presence model serves ESPHome (today), Matter, and direct webhooks (future)
+- **Semantic Evolution**: Architecture reserves hooks for future ML-based activity classification within ESP32 constraints (~50KB heap, ~500ms inference)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -50,6 +57,9 @@ HardwareOS is the custom firmware stack for RS-1 that transforms radar data into
 | **Local-First** | Full functionality without cloud; cloud enhances but isn't required |
 | **Maintainable** | Clear module boundaries with testable interfaces |
 | **Secure** | Signed firmware, encrypted transport, secure boot chain |
+| **Edge Intelligence** | Architecture supports future ML-based activity classification within ESP32 constraints |
+| **Protocol Agnostic** | Unified presence model decoupled from output protocol (ESPHome, Matter, webhooks) |
+| **OTA Extensibility** | New capabilities delivered via firmware without hardware changes |
 
 ## 3. Product Variants
 
@@ -125,9 +135,77 @@ This prevents TLS handshakes (~500ms) from blocking radar frame processing (33 H
 
 ---
 
-## 5. System Architecture
+## 5. Platform Architecture
 
-### 5.1 Data Flow Pipeline (RS-1 Pro)
+This section describes the platform evolution architecture. MVP implements v1.0; later versions add capabilities via OTA without hardware changes.
+
+### 5.1 Capability Layers
+
+```
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │                        CAPABILITY EVOLUTION                                  │
+    │                                                                              │
+    │    v1.0 UX Excellence              v1.5 Edge Intelligence                   │
+    │    ┌────────────────────┐          ┌────────────────────┐                   │
+    │    │ Zone-based presence │   OTA   │ Activity classif.  │                   │
+    │    │ ESPHome Native API  │ ──────▶ │ Local ML inference │                   │
+    │    │ Mobile onboarding   │         │ Webhook dispatch   │                   │
+    │    └────────────────────┘          └────────────────────┘                   │
+    │                                            │                                 │
+    │                                            │ OTA                             │
+    │                                            ▼                                 │
+    │                                    v2.0 Semantic Understanding              │
+    │                                    ┌────────────────────┐                   │
+    │                                    │ Matter bridge      │                   │
+    │                                    │ Standalone mode    │                   │
+    │                                    │ Behavioral patterns│                   │
+    │                                    └────────────────────┘                   │
+    └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 Protocol Abstraction
+
+The presence model is decoupled from output protocols, enabling future protocol support without core changes:
+
+```
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │                        PROTOCOL ABSTRACTION                                  │
+    │                                                                              │
+    │    ┌─────────────────────────────────────────────────────────┐              │
+    │    │              Unified Presence Model (M03/M04)           │              │
+    │    │   zone_id | occupied | target_count | confidence | ...  │              │
+    │    └─────────────────────────────────────────────────────────┘              │
+    │                              │                                               │
+    │              ┌───────────────┼───────────────┐                              │
+    │              │               │               │                              │
+    │              ▼               ▼               ▼                              │
+    │    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                       │
+    │    │   ESPHome    │ │    Matter    │ │   Webhooks   │                       │
+    │    │  Native API  │ │   (v2.0)     │ │   (v1.5)     │                       │
+    │    │    (M05)     │ │              │ │              │                       │
+    │    └──────────────┘ └──────────────┘ └──────────────┘                       │
+    │         v1.0            v2.0            v1.5                                │
+    └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.3 Edge Intelligence Hooks
+
+Reserved architectural hooks for future ML-based activity classification:
+
+| Hook | Location | Description | Budget |
+|------|----------|-------------|--------|
+| Track History Buffer | M02 | Last N positions/velocities per track | 2KB per track |
+| Activity Classifier Slot | M04 | Callback for ML inference result | 50KB heap, 500ms latency |
+| Action Dispatch Queue | M05 | Webhook/HTTP action queue | 10 pending actions |
+| Semantic Entity Slot | M05 | Reserved entity IDs for activity types | 8 entities |
+
+**Note:** These hooks are architectural placeholders. MVP does not implement ML classification.
+
+---
+
+## 6. System Architecture
+
+### 6.1 Data Flow Pipeline (RS-1 Pro)
 
 The core processing pipeline uses **dual-radar fusion** with time-division multiplexing. LD2450 runs at 33 Hz for tracking, LD2410 at ~5 Hz for presence confidence. **Note:** RS-1 Lite uses a simplified M01→M04→M05 path with LD2410 only (see Section 3).
 
@@ -172,7 +250,7 @@ The core processing pipeline uses **dual-radar fusion** with time-division multi
     • M01 multiplexes both streams, outputs unified detection_frame_t to M02
 ```
 
-### 5.2 Module Layers
+### 6.2 Module Layers
 
 ```
     ┌─────────────────────────────────────────────────────────────────────┐
@@ -220,7 +298,7 @@ The core processing pipeline uses **dual-radar fusion** with time-division multi
     └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.3 Zone Processing Detail (RS-1 Pro)
+### 6.3 Zone Processing Detail (RS-1 Pro)
 
 ```
                               ZONE PROCESSING FLOW
@@ -285,9 +363,9 @@ The core processing pipeline uses **dual-radar fusion** with time-division multi
 
 ---
 
-## 6. Module Index
+## 7. Module Index
 
-### 6.1 Core Data Path
+### 7.1 Core Data Path
 
 These modules process radar data into presence events:
 
@@ -298,7 +376,7 @@ These modules process radar data into presence events:
 | **M03** | Zone Engine | Map tracks to polygon zones, determine occupancy | [HARDWAREOS_MODULE_ZONE_ENGINE.md](HARDWAREOS_MODULE_ZONE_ENGINE.md) |
 | **M04** | Presence Smoothing | Apply hysteresis and hold logic for stable output | [HARDWAREOS_MODULE_PRESENCE_SMOOTHING.md](HARDWAREOS_MODULE_PRESENCE_SMOOTHING.md) |
 
-### 6.2 External Interfaces
+### 7.2 External Interfaces
 
 These modules handle communication with external systems:
 
@@ -308,7 +386,7 @@ These modules handle communication with external systems:
 | **M07** | OTA Manager | Cloud-triggered updates with rollback | [HARDWAREOS_MODULE_OTA.md](HARDWAREOS_MODULE_OTA.md) |
 | **M11** | Zone Editor Interface | Zone config sync and live target streaming | [HARDWAREOS_MODULE_ZONE_EDITOR.md](HARDWAREOS_MODULE_ZONE_EDITOR.md) |
 
-### 6.3 System Services
+### 7.3 System Services
 
 These modules provide infrastructure for all other modules:
 
@@ -321,7 +399,7 @@ These modules provide infrastructure for all other modules:
 
 ---
 
-## 7. Module Responsibilities
+## 8. Module Responsibilities
 
 ### M01 Radar Ingest
 
@@ -440,7 +518,7 @@ These modules provide infrastructure for all other modules:
 
 ---
 
-## 8. Inter-Module Communication
+## 9. Inter-Module Communication
 
 ```
     ┌─────────────────────────────────────────────────────────────────────┐
@@ -489,9 +567,9 @@ These modules provide infrastructure for all other modules:
 
 ---
 
-## 9. Hardware Platform
+## 10. Hardware Platform
 
-### 9.1 Target Hardware
+### 10.1 Target Hardware
 
 | Component | Specification |
 |-----------|---------------|
@@ -503,7 +581,7 @@ These modules provide infrastructure for all other modules:
 | **Power** | USB-C, 5V |
 | **Ethernet** | Optional RMII PHY (SR8201F) for PoE variant |
 
-### 9.2 Resource Budget
+### 10.2 Resource Budget
 
 | Resource | Budget | Usage |
 |----------|--------|-------|
@@ -514,7 +592,7 @@ These modules provide infrastructure for all other modules:
 | RAM (Heap) | ~250 KB | Runtime allocations |
 | RAM (Stack) | 16 KB | Task stacks |
 
-### 9.3 Memory Map
+### 10.3 Memory Map
 
 ```
     Flash Layout (8MB)
@@ -541,7 +619,7 @@ These modules provide infrastructure for all other modules:
 
 ---
 
-## 10. Key Assumptions
+## 11. Key Assumptions
 
 These assumptions underpin the module specifications. If any change, review the affected modules.
 
@@ -559,10 +637,13 @@ These assumptions underpin the module specifications. If any change, review the 
 | A10 | Product variant: Lite (LD2410) or Pro (LD2410+LD2450 dual-radar) | M01, M02, M03, M04 |
 | A11 | LD2410 frame rate ~5 Hz, UART 115200 baud | M01 (Both variants) |
 | A12 | Pro uses time-division multiplexed dual-radar fusion | M01 (Pro only) |
+| A13 | Protocol abstraction layer decouples presence from output protocol | M05 (platform) |
+| A14 | OTA can deliver new capability modules without breaking existing ones | M07 (platform) |
+| A15 | Edge ML budget: ~50KB heap, ~500ms classification latency | M02, M04 (platform) |
 
 ---
 
-## 11. External Dependencies
+## 12. External Dependencies
 
 | Dependency | Version | Modules | Purpose |
 |------------|---------|---------|---------|
@@ -575,9 +656,9 @@ These assumptions underpin the module specifications. If any change, review the 
 
 ---
 
-## 12. Testing Strategy
+## 13. Testing Strategy
 
-### 12.1 Test Levels
+### 13.1 Test Levels
 
 ```
     ┌─────────────────────────────────────────────────────────────────────┐
@@ -597,7 +678,7 @@ These assumptions underpin the module specifications. If any change, review the 
     └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 12.2 CI/CD Integration
+### 13.2 CI/CD Integration
 
 - Unit tests run on every commit
 - Integration tests run on PR merge
@@ -605,7 +686,7 @@ These assumptions underpin the module specifications. If any change, review the 
 
 ---
 
-## 13. Open Questions
+## 14. Open Questions
 
 | Question | Owner | Status |
 |----------|-------|--------|
@@ -617,10 +698,11 @@ These assumptions underpin the module specifications. If any change, review the 
 
 ---
 
-## 14. Document History
+## 15. Document History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1 | 2026-01-XX | OpticWorks | Initial draft |
 | 0.2 | 2026-01-08 | OpticWorks | Added ASCII diagrams, module links, architecture details |
 | 0.3 | 2026-01-15 | OpticWorks | Updated MCU to ESP32-WROOM-32E, added Lite/Pro variant strategy, SMP architecture |
+| 0.4 | 2026-01-18 | OpticWorks | Added platform foundation overview; platform architecture section with capability layers, protocol abstraction, edge intelligence hooks; platform assumptions A13-A15 |
