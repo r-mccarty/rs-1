@@ -576,7 +576,7 @@ These modules provide infrastructure for all other modules:
 | **MCU** | ESP32-WROOM-32E (Xtensa LX6 dual-core, 240MHz, 520KB SRAM, 8MB Flash) |
 | **Radar (Lite)** | HiLink LD2410 (24GHz FMCW, binary presence) |
 | **Radar (Pro)** | HiLink LD2410 + LD2450 (dual-radar fusion, time-division multiplexed) |
-| **Interface** | UART×2: LD2450 @ 256000 baud, LD2410 @ 115200 baud |
+| **Interface** | UART×2: LD2450 @ 256000 baud, LD2410 @ 256000 baud |
 | **USB** | CH340N USB-UART bridge |
 | **Power** | USB-C, 5V |
 | **Ethernet** | Optional RMII PHY (SR8201F) for PoE variant |
@@ -635,7 +635,7 @@ These assumptions underpin the module specifications. If any change, review the 
 | A8 | Typical occlusions < 2 seconds | M04 (Pro only) |
 | A9 | User prefers false occupancy over false vacancy | M04 |
 | A10 | Product variant: Lite (LD2410) or Pro (LD2410+LD2450 dual-radar) | M01, M02, M03, M04 |
-| A11 | LD2410 frame rate ~5 Hz, UART 115200 baud | M01 (Both variants) |
+| A11 | LD2410 frame rate ~5 Hz, UART 256000 baud | M01 (Both variants) |
 | A12 | Pro uses time-division multiplexed dual-radar fusion | M01 (Pro only) |
 | A13 | Protocol abstraction layer decouples presence from output protocol | M05 (platform) |
 | A14 | OTA can deliver new capability modules without breaking existing ones | M07 (platform) |

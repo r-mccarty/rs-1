@@ -67,8 +67,9 @@ RS-1's single-PCBA architecture is designed for capability extension via OTA. Th
 | Component | Specification | Notes |
 |-----------|---------------|-------|
 | **MCU** | ESP32-WROOM-32E-N8 + CH340N | Xtensa LX6 dual-core, 240MHz, 8MB Flash, 520KB SRAM |
-| **Radar** | Hi-Link LD2450 | 24GHz FMCW, 3 targets, 6m range, 120° H × 60° V |
-| **Interface** | UART | 256000 baud |
+| **Radar (Lite)** | Hi-Link LD2410 | 24GHz FMCW, static presence, 6m range, 120° × 120° FOV |
+| **Radar (Pro)** | Hi-Link LD2410 + LD2450 | LD2410 for presence + LD2450 for tracking (3 targets, 120° H × 60° V) |
+| **Interface** | UART | 256000 baud (both radars) |
 | **Power** | USB-C, 5V | PoE add-on available |
 | **Indicator** | Status LED | WS2812 RGB |
 | **Enclosure** | Wall/ceiling mount | Form factor TBD |

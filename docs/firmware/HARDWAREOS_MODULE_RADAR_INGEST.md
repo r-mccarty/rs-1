@@ -25,7 +25,7 @@ Parse raw radar UART frames into normalized detection data and deliver timestamp
 | A5 | Speed range: -128 to +127 cm/s | Velocity filtering thresholds (Pro only) |
 | A6 | ESP32-WROOM-32E is the target MCU | Memory constraints, dual UART peripheral config |
 | A7 | Product variant: Lite (LD2410) or Pro (LD2410+LD2450) | Different parsers, dual-radar for Pro |
-| A8 | LD2410 UART baud rate is 115200 | Serial configuration (Lite UART 1, Pro UART 1) |
+| A8 | LD2410 UART baud rate is 256000 | Serial configuration (Lite UART 1, Pro UART 1) |
 | A9 | LD2410 outputs at ~5 Hz (200ms frame interval) | Frame timing for presence updates |
 | A10 | Pro uses time-division multiplexed dual-radar | M01 handles two UART streams concurrently |
 
@@ -35,12 +35,12 @@ Parse raw radar UART frames into normalized detection data and deliver timestamp
 
 #### RS-1 Lite (Single Radar)
 - **UART 1 RX**: LD2410 TX → ESP32-WROOM-32E GPIO (UART1 RX)
-- **Baud Rate**: 115200
+- **Baud Rate**: 256000
 - **Frame Format**: LD2410 Engineering Mode frames (see Section 3.3)
 - **Core Affinity**: Pinned to Core 1 for time-critical processing
 
 #### RS-1 Pro (Dual Radar, Time-Division Multiplexed)
-- **UART 1 RX**: LD2410 TX → ESP32-WROOM-32E GPIO (UART1 RX) @ 115200 baud
+- **UART 1 RX**: LD2410 TX → ESP32-WROOM-32E GPIO (UART1 RX) @ 256000 baud
 - **UART 2 RX**: LD2450 TX → ESP32-WROOM-32E GPIO (UART2 RX) @ 256000 baud
 - **Frame Format**: Both protocols parsed concurrently
 - **Core Affinity**: Pinned to Core 1 for time-critical processing
@@ -308,7 +308,7 @@ bool radar_is_connected(void) {
 
 | Parameter | Type | Default (Lite) | Default (Pro) | Description |
 |-----------|------|----------------|---------------|-------------|
-| `uart1_baud` | uint32 | 115200 | 115200 | LD2410 UART baud rate |
+| `uart1_baud` | uint32 | 256000 | 256000 | LD2410 UART baud rate |
 | `uart1_rx_pin` | uint8 | GPIO_XX | GPIO_XX | LD2410 RX pin |
 | `uart2_baud` | uint32 | N/A | 256000 | LD2450 UART baud rate (Pro only) |
 | `uart2_rx_pin` | uint8 | N/A | GPIO_YY | LD2450 RX pin (Pro only) |
