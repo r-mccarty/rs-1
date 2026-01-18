@@ -11,11 +11,26 @@
 
 ## 1. Product Summary
 
-RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy using a single LD2450 tracking radar. It features mobile onboarding, native Home Assistant discovery via ESPHome-compatible Native API, and cloud-push OTA updates. The product prioritizes UX and software capability (unlimited zones, AR-assisted setup) over multi-sensor hardware complexity.
+RS-1 is a prosumer-grade mmWave presence sensor family built on a single PCBA with selective population. It features mobile onboarding, native Home Assistant discovery via ESPHome-compatible Native API, and cloud-push OTA updates. The product prioritizes UX and software capability (unlimited zones, AR-assisted setup) over multi-sensor hardware complexity.
 
-**Platform Foundation:** RS-1's architecture is designed for capability extension via OTA. The same infrastructure that delivers firmware updates can deliver new capabilities—activity classification, semantic understanding, direct device control—without requiring hardware changes. Today, RS-1 integrates with Home Assistant. Tomorrow, it can operate standalone or control devices directly via Matter/webhooks.
+### 1.1 Product Variants
 
-**Target Price:** $70-80 base device
+| Variant | Radar | Capabilities | Target Use | Retail |
+|---------|-------|--------------|------------|--------|
+| **RS-1 Lite** | LD2410 | Static presence detection | Utility rooms (bathrooms, hallways, closets) | $49 |
+| **RS-1 Pro** | LD2410 + LD2450 | Dual radar fusion, zone tracking | Living spaces (living rooms, kitchens, bedrooms) | $89 |
+
+### 1.2 Add-Ons
+
+| Add-On | Description | Retail |
+|--------|-------------|--------|
+| **PoE** | Ethernet + Power via RMII PHY | +$30 |
+| **IAQ** | ENS160 air quality via magnetic snap-on daughterboard | +$35 |
+
+### 1.3 Platform Foundation
+
+RS-1's single-PCBA architecture is designed for capability extension via OTA. The same infrastructure that delivers firmware updates can deliver new capabilities—activity classification, semantic understanding, direct device control—without requiring hardware changes. Today, RS-1 integrates with Home Assistant. Tomorrow, it can operate standalone or control devices directly via Matter/webhooks.
+
 **Optional Subscription:** $3-5/month (remote access, AR scanning, analytics)
 
 ---
@@ -24,14 +39,17 @@ RS-1 is a prosumer-grade mmWave presence sensor delivering zone-based occupancy 
 
 ### 2.1 In Scope (MVP)
 
-- Single LD2450 radar with ESP32-WROOM-32E
-- Unlimited software-defined zones
+- Single PCBA with ESP32-WROOM-32E + CH340N
+- RS-1 Lite variant (LD2410 static presence)
+- RS-1 Pro variant (LD2410 + LD2450 dual radar fusion)
+- Unlimited software-defined zones (Pro variant)
 - ESPHome Native API compatibility
 - Mobile app onboarding (QR + Wi-Fi setup)
 - Manual zone editor (drag/resize/rename)
 - Cloud-push OTA with local fallback
 - Local-first operation (no cloud required for core function)
-- PoE add-on option (via RMII PHY)
+- PoE add-on option (via RMII PHY + SR8201F)
+- IAQ add-on option (magnetic snap-on daughterboard)
 
 ### 2.2 Out of Scope (MVP)
 
@@ -361,4 +379,4 @@ See `docs/contracts/PROTOCOL_PROVISIONING.md` for detailed provisioning protocol
 |---------|------|--------|---------|
 | 0.1 | 2026-01-XX | OpticWorks | Initial draft (split docs) |
 | 0.2 | 2026-01-09 | OpticWorks | Consolidated PRODUCT_SPEC + TECH_REQUIREMENTS |
-| 0.3 | 2026-01-18 | OpticWorks | Added platform foundation; platform enablers (post-MVP); progressive disclosure UX principle; post-MVP milestones M4-M6 |
+| 0.3 | 2026-01-18 | OpticWorks | Added platform foundation; platform enablers (post-MVP); progressive disclosure UX principle; post-MVP milestones M4-M6; aligned with hardware variants (Lite/Pro) and add-ons (PoE/IAQ) |

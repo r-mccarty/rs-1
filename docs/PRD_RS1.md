@@ -23,6 +23,19 @@ Current mmWave presence sensors force users to choose between reliability and us
 
 RS-1 fills this gap: professional reliability, consumer UX, prosumer control.
 
+### Product Family
+
+RS-1 is not a single SKU—it's a product family built on one PCB with selective population:
+
+| Variant | Radar | Positioning | Retail |
+|---------|-------|-------------|--------|
+| **RS-1 Lite** | LD2410 | "I exist" - Utility rooms | $49 |
+| **RS-1 Pro** | LD2410 + LD2450 | "I live here" - Living spaces | $89 |
+
+**Add-ons:** PoE (+$30), IAQ Air Quality (+$35)
+
+This single-PCBA strategy enables OTA to deliver new capabilities to the entire installed base without hardware changes.
+
 ---
 
 ## 2. Vision
@@ -46,10 +59,12 @@ RS-1 is the presence sensor that doesn't require a PhD to set up. Under the hood
 **Platform Thesis:** While cloud-dependent devices add latency and privacy concerns, RS-1 processes everything at the edge. Today, RS-1 integrates seamlessly with Home Assistant. Tomorrow, it can control devices directly without any hub. The same OTA infrastructure that delivers firmware updates can deliver new capabilities—activity classification, semantic understanding, direct device control—without requiring hardware changes.
 
 **Differentiation:**
+- Single-PCBA product family: Lite ($49) and Pro ($89) from same board
 - Unlimited software zones (vs. Aqara's 30-zone hardware limit)
 - ESPHome-native (vs. proprietary protocols)
 - Cloud-optional OTA (vs. manual firmware updates)
 - Mobile-first setup (vs. YAML configuration)
+- Modular add-ons: PoE and IAQ without SKU proliferation
 
 **Platform Differentiators (Post-MVP):**
 - Edge Intelligence: <100ms detection-to-action latency (vs. cloud 500ms-2s)
@@ -333,4 +348,4 @@ Explicitly out of scope for this document (covered elsewhere):
 |---------|------|--------|---------|
 | 0.1 | 2026-01-XX | OpticWorks | Initial draft |
 | 0.2 | 2026-01-09 | OpticWorks | Refocused on vision/users/metrics; added open questions section; moved requirements to REQUIREMENTS_RS1.md |
-| 0.4 | 2026-01-18 | OpticWorks | Added Tesla Strategy platform vision; platform differentiators; Architect-to-Sovereign user evolution; platform intelligence metrics; platform risks and evolution questions |
+| 0.4 | 2026-01-18 | OpticWorks | Added Tesla Strategy platform vision; product family (Lite/Pro + add-ons); platform differentiators; Architect-to-Sovereign user evolution; platform intelligence metrics; platform risks and evolution questions |
