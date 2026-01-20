@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "updated_at": "2026-01-15T10:00:00Z",
+  "zones": [
+    {
+      "id": "zone_living",
+      "name": "Living Room",
+      "type": "include",
+      "vertices": [[0, 0], [2000, 0], [2000, 3000], [0, 3000]],
+      "sensitivity": 50
+    }
+  ]
+}

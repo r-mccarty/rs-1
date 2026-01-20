@@ -88,6 +88,12 @@ opticworks/{device_id}/{category}/{action}
 |-------|-----------|-----|--------|---------|
 | `opticworks/{device_id}/targets/stream` | Device → Cloud | 0 | No | Live target positions (~10 Hz) |
 
+**Privacy Note:** Target stream transmits real-time position data and is **disabled by default**. It is only enabled when:
+1. User explicitly enables "Zone Editor Live View" in the mobile app, AND
+2. User is actively viewing the Zone Editor interface
+
+Target stream automatically stops after 5 minutes of inactivity or when the Zone Editor is closed. This ensures no persistent position tracking occurs without explicit user action.
+
 ### 4.6 Device State Topics
 
 | Topic | Direction | QoS | Retain | Purpose |
@@ -201,7 +207,15 @@ See: `SCHEMA_ZONE_CONFIG.json`
 }
 ```
 
-**Note:** Vertices are in millimeters (mm) per COORDINATE_SYSTEM.md. Cloud services convert from meters before publishing; device firmware uses mm internally.
+**Coordinate Conversion Ownership:**
+
+Per `../firmware/COORDINATE_SYSTEM.md`, M11 (Zone Editor module) is the **sole owner** of coordinate conversion between user-facing meters and internal millimeters:
+
+- **Cloud Zone Editor → Device:** Cloud sends meters; M11 converts to mm before storage
+- **Device → Cloud:** M11 converts mm to meters before publishing
+- **Internal firmware:** All modules (M02 Tracking, M03 Zone Engine) use mm exclusively
+
+This single conversion point prevents drift and rounding errors from multiple conversions.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -391,9 +405,18 @@ Cloud uses `mac_address` to lookup owner in purchase records database.
 Devices MUST configure LWT on connect:
 
 - **Topic**: `opticworks/{device_id}/state`
-- **Payload**: `{"online": false, "last_seen": "<timestamp>"}`
+- **Payload**:
+  ```json
+  {
+    "online": false,
+    "firmware_version": "1.2.0",
+    "last_seen": "2026-01-15T10:00:00Z"
+  }
+  ```
 - **QoS**: 1
 - **Retain**: Yes
+
+The LWT payload MUST include `firmware_version` to match the device state schema. This ensures the cloud can track which firmware version went offline.
 
 This ensures the cloud knows when a device disconnects unexpectedly.
 
@@ -424,6 +447,38 @@ Devices MUST NOT be able to:
 | Telemetry | 1 msg/min | Batch locally |
 | OTA status | 10 msg/update | Throttle |
 | Diagnostics | 1 req/10sec | Reject |
+
+### 9.1 Rate Limit Enforcement
+
+Rate limits are enforced **on the device side** using a token bucket algorithm:
+
+```c
+typedef struct {
+    uint32_t tokens;           // Current token count
+    uint32_t max_tokens;       // Bucket capacity
+    uint32_t refill_rate_ms;   // Time to add one token
+    uint32_t last_refill_ms;   // Last refill timestamp
+} rate_limiter_t;
+
+bool rate_limit_allow(rate_limiter_t *rl) {
+    uint32_t now = timebase_uptime_ms();
+    uint32_t elapsed = now - rl->last_refill_ms;
+    uint32_t new_tokens = elapsed / rl->refill_rate_ms;
+
+    if (new_tokens > 0) {
+        rl->tokens = MIN(rl->max_tokens, rl->tokens + new_tokens);
+        rl->last_refill_ms = now;
+    }
+
+    if (rl->tokens > 0) {
+        rl->tokens--;
+        return true;  // Allow message
+    }
+    return false;  // Rate limited
+}
+```
+
+**Rationale:** Device-side enforcement prevents unnecessary network traffic and broker load. The broker MAY additionally enforce limits as a safety net.
 
 ---
 

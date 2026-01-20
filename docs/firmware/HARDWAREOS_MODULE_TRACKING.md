@@ -650,7 +650,98 @@ uint8_t compute_confidence(const track_t *track) {
 
 ---
 
-## 14. Open Questions
+## 14. Kalman Filter Error Recovery
+
+To maintain robustness under numerical edge cases, the Kalman filter must detect and recover from divergence:
+
+### 14.1 Divergence Detection
+
+```c
+#define MAX_COVARIANCE 1e6f
+#define MIN_COVARIANCE 1e-6f
+
+bool kalman_check_divergence(const track_t *track) {
+    // Check for NaN/Inf in state
+    for (int i = 0; i < 4; i++) {
+        if (isnan(track->x_state[i]) || isinf(track->x_state[i])) {
+            return true;
+        }
+    }
+
+    // Check for NaN/Inf in covariance diagonal
+    for (int i = 0; i < 4; i++) {
+        if (isnan(track->P[i][i]) || isinf(track->P[i][i])) {
+            return true;
+        }
+    }
+
+    // Check for covariance explosion
+    for (int i = 0; i < 4; i++) {
+        if (track->P[i][i] > MAX_COVARIANCE) {
+            return true;
+        }
+    }
+
+    // Check for singular covariance (too small)
+    for (int i = 0; i < 4; i++) {
+        if (track->P[i][i] < MIN_COVARIANCE) {
+            return true;
+        }
+    }
+
+    return false;
+}
+```
+
+### 14.2 Recovery Procedure
+
+```c
+void kalman_reset_filter(track_t *track, int16_t x_mm, int16_t y_mm) {
+    // Reset state to measurement
+    track->x_state[0] = (float)x_mm;
+    track->x_state[1] = (float)y_mm;
+    track->x_state[2] = 0.0f;  // Zero velocity
+    track->x_state[3] = 0.0f;
+
+    // Reset covariance to initial uncertainty
+    memset(track->P, 0, sizeof(track->P));
+    track->P[0][0] = 1000.0f;  // Position uncertainty (mm²)
+    track->P[1][1] = 1000.0f;
+    track->P[2][2] = 10000.0f; // Velocity uncertainty (mm²/s²)
+    track->P[3][3] = 10000.0f;
+
+    ESP_LOGW(TAG, "Track %d filter reset due to divergence", track->track_id);
+    telemetry_counter_inc("track.filter_resets");
+}
+
+void kalman_update_with_recovery(track_t *track, int16_t z_x, int16_t z_y) {
+    // Check for divergence before update
+    if (kalman_check_divergence(track)) {
+        kalman_reset_filter(track, z_x, z_y);
+        return;
+    }
+
+    // Normal Kalman update
+    kalman_update(track, z_x, z_y);
+
+    // Check for divergence after update
+    if (kalman_check_divergence(track)) {
+        kalman_reset_filter(track, z_x, z_y);
+    }
+}
+```
+
+### 14.3 Telemetry
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `track.filter_resets` | Counter | Kalman filter reset due to divergence |
+| `track.nan_detected` | Counter | NaN values detected in filter state |
+| `track.covariance_explosion` | Counter | Covariance exceeded bounds |
+
+---
+
+## 15. Open Questions
 
 - Tune Kalman parameters from real-world datasets
 - Evaluate need for IMM (Interacting Multiple Model) for varying motion patterns

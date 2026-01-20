@@ -42,12 +42,12 @@ RS-1's single-PCBA architecture is designed for capability extension via OTA. Th
 - Single PCBA with ESP32-WROOM-32E + CH340N
 - RS-1 Lite variant (LD2410 static presence)
 - RS-1 Pro variant (LD2410 + LD2450 dual radar fusion)
-- Unlimited software-defined zones (Pro variant)
+- Up to 16 software-defined zones (Pro variant)
 - ESPHome Native API compatibility
 - Mobile app onboarding (QR + Wi-Fi setup)
 - Manual zone editor (drag/resize/rename)
 - Cloud-push OTA with local fallback
-- Local-first operation (no cloud required for core function)
+- Local-capable operation (core detection works without cloud; provisioning and OTA require cloud)
 - PoE add-on option (via RMII PHY + SR8201F)
 - IAQ add-on option (magnetic snap-on daughterboard)
 
@@ -94,7 +94,7 @@ RS-1's single-PCBA architecture is designed for capability extension via OTA. Th
 | Coordinate system | X ±6000mm, Y 0-6000mm from sensor origin |
 | Frame rate | ~33 Hz (30ms frames) |
 | Zone evaluation | Point-in-polygon per zone per frame |
-| Zone count | Unlimited (resource-constrained to ~16 practical) |
+| Zone count | Up to 16 zones (resource-constrained limit) |
 
 ### 4.2 Presence Output
 

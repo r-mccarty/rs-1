@@ -60,9 +60,9 @@ RS-1 is the presence sensor that doesn't require a PhD to set up. Under the hood
 
 **Differentiation:**
 - Single-PCBA product family: Lite ($49) and Pro ($89) from same board
-- Unlimited software zones (vs. Aqara's 30-zone hardware limit)
+- Up to 16 software-defined zones (vs. Aqara's 30 but hardware-limited, vs. ESPHome's 3)
 - ESPHome-native (vs. proprietary protocols)
-- Cloud-optional OTA (vs. manual firmware updates)
+- Cloud-managed OTA with USB fallback (vs. manual firmware updates)
 - Mobile-first setup (vs. YAML configuration)
 - Modular add-ons: PoE and IAQ without SKU proliferation
 

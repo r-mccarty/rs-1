@@ -141,9 +141,9 @@ Sensitivity (0-100) maps to hold/delay parameters:
 | Sensitivity | Hold Time | Enter Delay | Use Case |
 |-------------|-----------|-------------|----------|
 | 0 (Min) | 5000ms | 500ms | Maximum stability, slow response |
-| 25 | 3000ms | 300ms | Balanced, low flicker |
-| 50 (Default) | 1500ms | 200ms | Balanced, moderate response |
-| 75 | 500ms | 100ms | Fast response, some flicker |
+| 25 | 3750ms | 375ms | Balanced, low flicker |
+| 50 (Default) | 2500ms | 250ms | Balanced, moderate response |
+| 75 | 1250ms | 125ms | Fast response, some flicker |
 | 100 (Max) | 0ms | 0ms | Instant, no smoothing |
 
 ### 6.1 Mapping Formula

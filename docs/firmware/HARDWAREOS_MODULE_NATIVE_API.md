@@ -192,8 +192,11 @@ typedef struct {
 
 ## 9. mDNS Advertisement
 
+### 9.1 Service Registration
+
 ```
 Service: _esphomelib._tcp.local
+Instance: rs1-{mac_suffix}
 Port: 6053
 TXT Records:
   - version=1.9
@@ -202,6 +205,32 @@ TXT Records:
   - project_name=opticworks.rs1
   - project_version=1.0.0
 ```
+
+### 9.2 Unique Instance Naming
+
+To avoid mDNS collisions when multiple RS-1 devices are on the same network, each device MUST use a unique instance name derived from its MAC address:
+
+```c
+// Instance name format: rs1-{last 6 hex chars of MAC}
+// Example: MAC AA:BB:CC:DD:EE:FF → "rs1-ddeeff"
+
+void mdns_init_service(void) {
+    uint8_t mac[6];
+    esp_efuse_mac_get_default(mac);
+
+    char instance_name[16];
+    snprintf(instance_name, sizeof(instance_name), "rs1-%02x%02x%02x",
+             mac[3], mac[4], mac[5]);
+
+    mdns_service_add(instance_name, "_esphomelib", "_tcp", 6053, txt_records, txt_count);
+
+    ESP_LOGI(TAG, "mDNS registered: %s._esphomelib._tcp.local", instance_name);
+}
+```
+
+**Full mDNS name:** `rs1-ddeeff._esphomelib._tcp.local`
+
+This ensures Home Assistant can discover and distinguish multiple RS-1 devices on the same network.
 
 ## 10. Configuration Parameters
 

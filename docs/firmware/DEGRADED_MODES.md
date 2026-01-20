@@ -68,6 +68,8 @@ This document specifies how RS-1 devices behave when subsystems fail or external
 ### 4.4 Recovery
 
 ```c
+#define WIFI_STABLE_THRESHOLD_MS 300000  // 5 minutes
+
 void wifi_reconnect_handler(void) {
     // Automatic reconnection with backoff
     static int attempt = 0;
@@ -81,6 +83,30 @@ void wifi_reconnect_handler(void) {
     } else {
         attempt++;
         schedule_retry(delay_ms);
+    }
+}
+
+// Called periodically while connected
+void wifi_check_stable_connection(void) {
+    static uint32_t connected_since_ms = 0;
+    static int last_attempt_count = 0;
+
+    if (wifi_is_connected()) {
+        if (connected_since_ms == 0) {
+            connected_since_ms = timebase_uptime_ms();
+            last_attempt_count = wifi_get_attempt_count();
+        }
+
+        uint32_t connected_duration = timebase_uptime_ms() - connected_since_ms;
+
+        // Reset backoff counter after 5 minutes of stable connection
+        if (connected_duration >= WIFI_STABLE_THRESHOLD_MS &&
+            wifi_get_attempt_count() == last_attempt_count) {
+            wifi_reset_attempt_counter();
+            ESP_LOGI(TAG, "WiFi stable for 5 min, reset backoff counter");
+        }
+    } else {
+        connected_since_ms = 0;
     }
 }
 ```

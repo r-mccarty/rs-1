@@ -444,6 +444,42 @@ if (new_security_version <= current_version) {
 esp_efuse_write_field_cnt(ESP_EFUSE_SECURE_VERSION, new_security_version);
 ```
 
+### 11.3 eFuse Burn Policy
+
+With only 32 eFuse bits available, burning must be strategic to avoid exhausting the device's update capacity:
+
+| Update Type | Burn eFuse | Rationale |
+|-------------|------------|-----------|
+| Critical CVE fix | Yes | Security takes precedence over eFuse budget |
+| Major version (1.x → 2.x) | Yes | Breaking changes warrant rollback protection |
+| Minor security patch | No | Prefer back-porting to older versions |
+| Feature update | No | No security impact |
+| Bug fix | No | Can be rolled back safely |
+
+**Lifecycle Strategy:**
+
+1. **Budget allocation:** Reserve ~10 eFuses for critical CVEs, ~10 for major versions, ~12 for emergencies.
+2. **Burn decision:** Only OpticWorks security team can authorize eFuse burns via signed OTA manifest flag.
+3. **Approaching exhaustion (>24 burned):** Notify user via cloud dashboard that device has limited remaining secure updates.
+4. **Exhaustion (32 burned):** Device can still receive updates but loses anti-rollback protection. Log warning on every boot.
+
+```c
+#define EFUSE_WARNING_THRESHOLD 24
+#define EFUSE_EXHAUSTED_THRESHOLD 32
+
+void check_efuse_budget(void) {
+    uint32_t burned = esp_efuse_read_field_cnt(ESP_EFUSE_SECURE_VERSION);
+
+    if (burned >= EFUSE_EXHAUSTED_THRESHOLD) {
+        ESP_LOGW(TAG, "Anti-rollback eFuses exhausted - rollback protection disabled");
+        telemetry_set_flag("security.efuse_exhausted", true);
+    } else if (burned >= EFUSE_WARNING_THRESHOLD) {
+        ESP_LOGI(TAG, "Anti-rollback eFuse budget low: %d/32 used", burned);
+        telemetry_set_gauge("security.efuse_remaining", 32 - burned);
+    }
+}
+```
+
 ## 12. Configuration Parameters
 
 | Parameter | Type | Default | Description |

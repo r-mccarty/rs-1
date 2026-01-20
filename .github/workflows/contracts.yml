@@ -1,0 +1,42 @@
+name: Contract Validation
+
+on:
+  push:
+    paths:
+      - 'docs/contracts/**'
+  pull_request:
+    paths:
+      - 'docs/contracts/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for breaking change detection
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install -g ajv-cli ajv-formats
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run validation
+        working-directory: docs/contracts
+        run: ./tooling/validate.sh --ci
+
+      - name: Check for breaking changes
+        if: github.event_name == 'pull_request'
+        working-directory: docs/contracts
+        run: |
+          python3 tooling/check-breaking.py --base origin/${{ github.base_ref }} --output-format github >> $GITHUB_STEP_SUMMARY
