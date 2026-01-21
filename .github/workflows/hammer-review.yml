@@ -97,7 +97,7 @@ jobs:
           git reset --hard ${SHA}
           mkdir -p docs/rfd
           PROMPT_B64="${PROMPT_B64}"
-          PROMPT="\$(printf '%s' \"\$PROMPT_B64\" | base64 -d)"
+          PROMPT="\$(printf '%s' \"\$PROMPT_B64\" | base64 -d -i)"
           claude --print --output-format json --dangerously-skip-permissions --max-turns ${MAX_TURNS} "\$PROMPT"
           EOF
           )
