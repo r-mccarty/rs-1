@@ -75,8 +75,8 @@ jobs:
           DATE_UTC="$(date -u +%Y%m%d)"
           export SHORT_SHA DATE_UTC
 
-          AUTH_HEADER="Authorization: Bearer ${AGENT_HARNESS_TOKEN}"
-          PROMPT_B64="$(curl -fsSL -H "$AUTH_HEADER" https://raw.githubusercontent.com/r-mccarty/agent-harness/main/scripts/hammer/build_prompt.py | python | tr -d '\n')"
+          AUTH_HEADER="Authorization: token ${AGENT_HARNESS_TOKEN}"
+          PROMPT_B64="$(curl -fsSL -H "$AUTH_HEADER" -H "Accept: application/vnd.github.raw" "https://api.github.com/repos/r-mccarty/agent-harness/contents/scripts/hammer/build_prompt.py?ref=main" | python | tr -d '\n')"
 
           sprite auth setup --token "$SPRITES_API_TOKEN"
 
