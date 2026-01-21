@@ -40,7 +40,7 @@ rs-1/
     ├── PRD_RS1.md            # Product requirements
     ├── REQUIREMENTS_RS1.md   # Functional requirements
     │
-    ├── firmware/             # Device firmware specs (11 modules)
+    ├── firmware/             # Device firmware specs (12 modules)
     │   ├── README.md         # Architecture overview with diagrams
     │   ├── HARDWAREOS_MODULE_*.md  # Per-module specifications
     │   ├── BOOT_SEQUENCE.md  # Module initialization order

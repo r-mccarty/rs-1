@@ -95,7 +95,7 @@ rs-1/
     ├── PRD_RS1.md            # Product requirements
     ├── REQUIREMENTS_RS1.md   # Functional requirements
     │
-    ├── firmware/             # Device firmware specs (11 modules)
+    ├── firmware/             # Device firmware specs (12 modules)
     │   ├── README.md         # HardwareOS architecture + diagrams
     │   ├── HARDWAREOS_MODULE_*.md  # Per-module specifications
     │   ├── BOOT_SEQUENCE.md  # Module initialization order
@@ -133,7 +133,7 @@ rs-1/
 
 ### Firmware (HardwareOS)
 
-HardwareOS is an 11-module firmware stack. See [docs/firmware/README.md](docs/firmware/README.md) for full documentation.
+HardwareOS is a 12-module firmware stack. See [docs/firmware/README.md](docs/firmware/README.md) for full documentation.
 
 | Layer | Modules | Purpose |
 |-------|---------|---------|
@@ -175,7 +175,7 @@ Firmware and cloud communicate via MQTT with JSON payloads. Schemas in [docs/con
 | Phase | Status | Description |
 |-------|--------|-------------|
 | **Specification** | Complete | PRD, requirements, module specs |
-| **Architecture** | Complete | Firmware (11 modules) + Cloud (4 services) |
+| **Architecture** | Complete | Firmware (12 modules) + Cloud (4 services) |
 | **Contracts** | Complete | MQTT protocol, JSON schemas |
 | **Firmware** | Not Started | ESP-IDF implementation |
 | **Cloud** | Not Started | Cloudflare Workers implementation |
