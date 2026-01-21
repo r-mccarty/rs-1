@@ -11,56 +11,10 @@ jobs:
   hammer-review:
     if: |
       github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip-hammer]')
-    runs-on: ubuntu-latest
-    concurrency:
-      group: hammer-review-${{ github.ref }}
-      cancel-in-progress: false
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install sprite CLI
-        env:
-          SPRITE_INSTALL_BIN_DIR: ${{ runner.temp }}/sprite-bin
-        run: |
-          curl -fsSL https://sprites.dev/install.sh | bash
-          echo "${SPRITE_INSTALL_BIN_DIR}" >> "$GITHUB_PATH"
-
-      - name: Install Infisical CLI
-        run: |
-          curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | sudo -E bash
-          sudo apt-get update
-          sudo apt-get install -y infisical
-
-      - name: Load secrets from Infisical
-        env:
-          INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
-          INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
-          INFISICAL_ENV: ${{ secrets.INFISICAL_ENV }}
-        run: |
-          INFISICAL_ENV="${INFISICAL_ENV:-dev}"
-          if [ -z "$INFISICAL_TOKEN" ] || [ -z "$INFISICAL_PROJECT_ID" ]; then
-            echo "Missing INFISICAL_TOKEN or INFISICAL_PROJECT_ID."
-            exit 1
-          fi
-          infisical export \
-            --token="$INFISICAL_TOKEN" \
-            --projectId="$INFISICAL_PROJECT_ID" \
-            --env="$INFISICAL_ENV" \
-            --format=dotenv \
-            --silent > /tmp/infisical.env
-          set -a
-          source /tmp/infisical.env
-          set +a
-          echo "SPRITES_API_TOKEN=$SPRITES_API_TOKEN" >> "$GITHUB_ENV"
-
-      - name: Run hammer review
-        env:
-          SPRITES_API_TOKEN: ${{ env.SPRITES_API_TOKEN }}
-          BEFORE_SHA: ${{ github.event.before || '0000000000000000000000000000000000000000' }}
-          SHA: ${{ github.sha }}
-        run: |
-          bash scripts/run-hammer-review.sh
+    uses: r-mccarty/agent-harness/.github/workflows/hammer-review.yml@main
+    secrets: inherit
+    with:
+      sprite_name: hammer
+      before_sha: ${{ github.event.before || '0000000000000000000000000000000000000000' }}
+      sha: ${{ github.sha }}
+      repo_full: ${{ github.repository }}
