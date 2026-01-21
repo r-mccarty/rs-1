@@ -28,3 +28,5 @@ with the Sprites API.
 - If the workflow fails with `sprite exec` errors, ensure `hammer` exists and is
   provisioned.
 - If Claude hangs, confirm the workflow is using the HTTP POST exec path.
+
+Trigger test: 2026-01-21T05:42:42Z
