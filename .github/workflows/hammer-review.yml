@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "feature/**"
+  workflow_dispatch:
 
 jobs:
   hammer-review:
