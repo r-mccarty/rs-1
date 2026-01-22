@@ -10,7 +10,7 @@ on:
 
 jobs:
   anvil-review:
-    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message || '', '[skip-anvil]') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (!contains(github.event.head_commit.message || '', '[skip-hammer]') && !contains(github.event.head_commit.message || '', '[skip-anvil]')) }}
     runs-on: ubuntu-latest
     concurrency:
       group: anvil-review-${{ github.ref }}
