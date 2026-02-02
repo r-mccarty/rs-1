@@ -1,0 +1,91 @@
+menu "RS-1 Configuration"
+
+    choice RS1_VARIANT
+        prompt "RS-1 Product Variant"
+        default RS1_VARIANT_PRO
+        help
+            Select the RS-1 product variant to build firmware for.
+
+        config RS1_VARIANT_PRO
+            bool "RS-1 Pro (LD2410 + LD2450 dual radar)"
+            help
+                Build for RS-1 Pro with dual-radar fusion.
+                Features: Zone tracking, multi-target detection.
+
+        config RS1_VARIANT_LITE
+            bool "RS-1 Lite (LD2410 only)"
+            help
+                Build for RS-1 Lite with single radar.
+                Features: Binary presence detection only.
+    endchoice
+
+    config RS1_DEVICE_NAME
+        string "Device Name"
+        default "RS-1 Presence Sensor"
+        help
+            Default device name for mDNS and Native API discovery.
+
+    menu "Radar Configuration"
+
+        config RS1_LD2410_RX_PIN
+            int "LD2410 UART RX GPIO"
+            default 5
+            range 0 39
+            help
+                GPIO pin connected to LD2410 TX (ESP32 receives).
+
+        config RS1_LD2410_TX_PIN
+            int "LD2410 UART TX GPIO"
+            default 4
+            range 0 39
+            help
+                GPIO pin connected to LD2410 RX (ESP32 transmits).
+
+        config RS1_LD2450_RX_PIN
+            int "LD2450 UART RX GPIO (Pro only)"
+            default 17
+            range 0 39
+            depends on RS1_VARIANT_PRO
+            help
+                GPIO pin connected to LD2450 TX (ESP32 receives).
+
+        config RS1_LD2450_TX_PIN
+            int "LD2450 UART TX GPIO (Pro only)"
+            default 16
+            range 0 39
+            depends on RS1_VARIANT_PRO
+            help
+                GPIO pin connected to LD2450 RX (ESP32 transmits).
+
+        config RS1_RADAR_DISCONNECT_TIMEOUT_MS
+            int "Radar Disconnect Timeout (ms)"
+            default 3000
+            range 1000 10000
+            help
+                Time without radar frames before declaring disconnected.
+
+    endmenu
+
+    menu "Debug Configuration"
+
+        config RS1_DEBUG_RADAR_OUTPUT
+            bool "Enable Radar Debug Output"
+            default y
+            help
+                Print parsed radar data to serial console.
+
+        config RS1_DEBUG_HEAP_MONITOR
+            bool "Enable Heap Monitoring"
+            default y
+            help
+                Periodically log heap usage statistics.
+
+        config RS1_DEBUG_FRAME_TIMING
+            bool "Enable Frame Timing Debug"
+            default n
+            help
+                Log timing information for each radar frame.
+
+    endmenu
+
+endmenu

@@ -1,0 +1,16 @@
+# RS-1 HardwareOS Partition Table
+# Reference: docs/firmware/MEMORY_BUDGET.md Section 2.2
+#
+# Name,   Type, SubType, Offset,  Size,   Flags
+# Notes:
+#   - 8MB Flash (0x800000 total)
+#   - OTA_0/OTA_1: 3MB each for A/B firmware updates
+#   - NVS: 16KB for configuration
+#   - SPIFFS: 256KB for persistent logs
+
+nvs,      data, nvs,     0x9000,  0x4000,
+otadata,  data, ota,     0xD000,  0x2000,
+phy_init, data, phy,     0xF000,  0x1000,
+ota_0,    app,  ota_0,   0x10000, 0x300000,
+ota_1,    app,  ota_1,   0x310000,0x300000,
+spiffs,   data, spiffs,  0x610000,0x40000,
