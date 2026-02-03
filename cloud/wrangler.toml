@@ -1,0 +1,44 @@
+# RS-1 Cloud Services - Wrangler Configuration
+# Reference: docs/cloud/INFRASTRUCTURE.md
+
+name = "rs1-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-29"
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "rs1-db"
+database_id = "local"  # Replace with actual ID in production
+
+# R2 Storage binding
+[[r2_buckets]]
+binding = "FIRMWARE_BUCKET"
+bucket_name = "rs1-firmware"
+
+[[r2_buckets]]
+binding = "TELEMETRY_BUCKET"
+bucket_name = "rs1-telemetry"
+
+# Environment variables (secrets via wrangler secret)
+[vars]
+ENVIRONMENT = "development"
+MQTT_BROKER = "mqtt.emqx.io"
+MQTT_PORT = "8883"
+
+# Production environment
+[env.production]
+name = "rs1-api-production"
+[env.production.vars]
+ENVIRONMENT = "production"
+
+# Staging environment
+[env.staging]
+name = "rs1-api-staging"
+[env.staging.vars]
+ENVIRONMENT = "staging"

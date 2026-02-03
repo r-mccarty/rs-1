@@ -1,0 +1,41 @@
+{
+  "name": "rs1-cloud",
+  "version": "0.1.0",
+  "description": "RS-1 Cloud Services - Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "db:migrate": "wrangler d1 migrations apply rs1-db",
+    "db:migrate:local": "wrangler d1 migrations apply rs1-db --local",
+    "db:reset:local": "rm -f .wrangler/state/v3/d1/miniflare-D1DatabaseObject/* && npm run db:migrate:local"
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "iot",
+    "mqtt",
+    "presence-sensor"
+  ],
+  "author": "OpticWorks",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240129.0",
+    "@types/node": "^20.11.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.4",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1",
+    "wrangler": "^3.25.0"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "zod": "^3.22.4"
+  }
+}
